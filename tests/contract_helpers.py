@@ -90,3 +90,74 @@ def read_compose_images(path: Path) -> dict[str, str]:
             images[current_service] = line.split(":", 1)[1].strip()
 
     return images
+
+
+def read_compose_host_ports(path: Path, service: str) -> list[int]:
+    """Return host-side TCP ports published by a compose service."""
+    ports: list[int] = []
+    current_service: str | None = None
+    in_ports = False
+
+    for line in path.read_text().splitlines():
+        if line.startswith("  ") and not line.startswith("    ") and line.rstrip().endswith(":"):
+            current_service = line.strip()[:-1]
+            in_ports = False
+            continue
+        if current_service != service:
+            continue
+        stripped = line.strip()
+        if stripped == "ports:":
+            in_ports = True
+            continue
+        if not in_ports:
+            continue
+        if stripped.startswith("- "):
+            mapping = stripped.removeprefix("- ").strip('"')
+            host_port = mapping.split(":")[0]
+            if host_port.isdigit():
+                ports.append(int(host_port))
+            continue
+        if stripped and not stripped.startswith("- "):
+            in_ports = False
+
+    return ports
+
+
+def read_mosquitto_listeners(path: Path) -> list[tuple[int, str | None]]:
+    """Return active (port, protocol) pairs from mosquitto.conf listener lines."""
+    listeners: list[tuple[int, str | None]] = []
+    pending_port: int | None = None
+    pending_protocol: str | None = None
+
+    for raw_line in path.read_text().splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith("listener "):
+            parts = line.split()
+            pending_port = int(parts[1])
+            pending_protocol = None
+            continue
+        if pending_port is not None and line.startswith("protocol "):
+            pending_protocol = line.split(maxsplit=1)[1]
+            listeners.append((pending_port, pending_protocol))
+            pending_port = None
+            pending_protocol = None
+            continue
+        if pending_port is not None and not line.startswith("socket_domain"):
+            listeners.append((pending_port, pending_protocol))
+            pending_port = None
+            pending_protocol = None
+
+    return listeners
+
+
+def read_mosquitto_setting(path: Path, key: str) -> str | None:
+    """Return the first active value for a mosquitto.conf setting."""
+    for raw_line in path.read_text().splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#"):
+            continue
+        if line.startswith(f"{key} "):
+            return line.split(maxsplit=1)[1]
+    return None

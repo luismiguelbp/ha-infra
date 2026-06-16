@@ -132,6 +132,69 @@
               )
             )
           }}
+      when: edge_stack_env_file.stat.exists
+
+    - name: Check whether edge stack runs Mosquitto and Node-RED
+      ansible.builtin.command: docker compose ps --services
+      args:
+        chdir: "{{ edge_stack_path }}"
+      register: edge_stack_compose_services
+      changed_when: false
+      become: true
+      become_user: "{{ ansible_user }}"
+      when: edge_stack_env_file.stat.exists
+
+    - name: Check Node-RED can resolve Mosquitto service name
+      ansible.builtin.command: >-
+        docker compose exec -T node-red
+        node -e "require('dns').lookup('mosquitto', (err) => process.exit(err ? 1 : 0))"
+      args:
+        chdir: "{{ edge_stack_path }}"
+      register: mqtt_dns_check
+      changed_when: false
+      failed_when: false
+      become: true
+      become_user: "{{ ansible_user }}"
+      when:
+        - edge_stack_env_file.stat.exists
+        - "'mosquitto' in edge_stack_compose_services.stdout_lines"
+        - "'node-red' in edge_stack_compose_services.stdout_lines"
+
+    - name: Check Node-RED can reach Mosquitto on port 1883
+      ansible.builtin.command: >-
+        docker compose exec -T node-red
+        sh -c "nc -zv -w 3 mosquitto 1883"
+      args:
+        chdir: "{{ edge_stack_path }}"
+      register: mqtt_tcp_check
+      changed_when: false
+      failed_when: false
+      become: true
+      become_user: "{{ ansible_user }}"
+      when:
+        - edge_stack_env_file.stat.exists
+        - "'mosquitto' in edge_stack_compose_services.stdout_lines"
+        - "'node-red' in edge_stack_compose_services.stdout_lines"
+
+    - name: Build MQTT connectivity text
+      ansible.builtin.set_fact:
+        mqtt_connectivity_text: >-
+          {{
+            'skipped'
+            if not edge_stack_env_file.stat.exists
+            or 'mosquitto' not in edge_stack_compose_services.stdout_lines
+            or 'node-red' not in edge_stack_compose_services.stdout_lines
+            else (
+              'ok'
+              if mqtt_dns_check.rc | default(1) == 0 and mqtt_tcp_check.rc | default(1) == 0
+              else (
+                'dns failed'
+                if mqtt_dns_check.rc | default(1) != 0
+                else 'tcp failed'
+              )
+            )
+          }}
+      when: edge_stack_env_file.stat.exists
 
     - name: Print host status summary
       ansible.builtin.debug:
@@ -141,9 +204,24 @@
           - "compose_version={{ docker_compose_version_text }}"
           - "compose_ps={{ docker_compose_ps_text }}"
           - "edge_stack_health={{ edge_stack_health_text }}"
+          - "mqtt_connectivity={{ mqtt_connectivity_text | default('skipped') }}"
           - "uptime={{ host_uptime.stdout }}"
           - "root_disk={{ root_disk_usage.stdout | default('unknown') }}"
           - "edge_stack_disk={{ edge_stack_disk_usage.stdout | default('unknown') }}"
+
+    - name: Assert Node-RED can reach Mosquitto
+      ansible.builtin.assert:
+        that:
+          - mqtt_dns_check.rc | default(1) == 0
+          - mqtt_tcp_check.rc | default(1) == 0
+        fail_msg: >-
+          MQTT connectivity check failed on {{ inventory_hostname }}:
+          {{ 'Node-RED cannot resolve mosquitto' if mqtt_dns_check.rc | default(1) != 0
+             else 'Node-RED cannot reach mosquitto:1883' }}
+      when:
+        - edge_stack_env_file.stat.exists
+        - "'mosquitto' in edge_stack_compose_services.stdout_lines"
+        - "'node-red' in edge_stack_compose_services.stdout_lines"
 
     - name: Assert edge stack containers are healthy
       ansible.builtin.assert:

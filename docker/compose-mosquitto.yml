@@ -5,7 +5,6 @@ services:
     hostname: mosquitto
     ports:
       - "1883:1883"
-      - "8883:8883"
       - "9001:9001"
     volumes:
       - ${DOCKER_PATH}/data/mosquitto/config:/mosquitto/config:rw

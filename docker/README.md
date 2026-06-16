@@ -8,7 +8,7 @@ Node-RED and Mosquitto on MQTT edge nodes; Portainer, PostgreSQL, and Grafana on
 |---------|------|-------|---------|
 | Portainer | 9443 | edge-node-1 | Docker management UI |
 | Node-RED | 1880 | edge-node-1, edge-node-2 | Flow editor and runtime |
-| Mosquitto | 1883, 8883, 9001 | edge-node-1, edge-node-2 | MQTT broker (9001 = WebSockets) |
+| Mosquitto | 1883, 9001 | edge-node-1, edge-node-2 | MQTT broker (9001 = WebSockets) |
 | PostgreSQL | 5432 | edge-node-1, edge-node-3 | Database (Grafana backend) |
 | Grafana | 3000 | edge-node-1, edge-node-3 | Dashboards |
 
@@ -70,6 +70,8 @@ Containers start only when `/opt/docker/.env` exists. Ansible does not overwrite
 ## Node-RED
 
 - MQTT broker: `mosquitto:1883`, user/password from `MQTT_USER` / `MQTT_PASSWORD` in `.env`
+- Use the Compose service name `mosquitto` when Node-RED runs in the same stack. Secondary LAN names (for example a CNAME alias when the canonical A record is `edge-node-1.example.lan`) often fail to resolve inside the Node-RED container (Node-RED stays on **connecting**). For remote brokers, use the inventory `dns_name` (for example `edge-node-2.example.lan`) or the host IP.
+- Port `8883` is not published until TLS is enabled in `mosquitto.conf`; use plain MQTT on `1883` or WebSockets on `9001`.
 - Credential encryption: `NODE_RED_CREDENTIAL_SECRET` in `.env`
 - Editor login: user `admin` in `settings.js`
 
