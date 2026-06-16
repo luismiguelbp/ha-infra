@@ -7,7 +7,7 @@ description: Deploy and operate the managed-infra Linux fleet via bin/ scripts a
 
 Infrastructure-as-code for a small Linux server fleet. Run all commands from the **managed-infra repo root** on your control machine.
 
-Follow `AGENTS.md`: examples in this repo use fictional names (`edge-node-1`, `site-a`); live deploys use inventory from `MANAGED_INFRA_CONFIG_SRC`.
+Follow `AGENTS.md`: examples in this repo use fictional names (`edge-node-1`, `site-a`); live deploys use inventory from `MANAGED_INFRA_CONFIG_SRC`. Do not copy production hostnames or DNS aliases into committed files here.
 
 ## Two-repo model
 

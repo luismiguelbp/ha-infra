@@ -18,6 +18,18 @@ Use fictional names from `ansible/inventory/` in docs, rules, skills, commands, 
 
 Do **not** add real hostnames, real DNS names, real locations, or fleet-specific paths to this repository.
 
+That includes **service aliases and secondary DNS names** (for example MQTT broker hostnames or CNAME targets). In this repo use only the fictional `edge-node-N.example.lan` names from the table above, or Compose service names such as `mosquitto` where appropriate.
+
+### Runtime vs committed content
+
+| Context | Names to use |
+|---------|----------------|
+| Committed files in `managed-infra` (docs, README, tests, comments, examples) | Fictional template names only |
+| Live fleet operations (`MANAGED_INFRA_CONFIG_SRC`, Ansible, SSH, status checks) | Production inventory from the external config clone |
+| Chat or investigation summaries | Production names are fine when reporting status; **sanitize before writing to this repo** |
+
+When troubleshooting on production hosts, do not paste discovered hostnames, DNS aliases, or IPs into files that will be committed here. Translate examples to `edge-node-N.example.lan` and `site-a` / `site-b` / `site-c`.
+
 ## Two-Repo Model
 
 | Repo | Role |
@@ -55,6 +67,8 @@ pytest
 ./bin/infra-ping
 ./bin/infra-docker-status
 ```
+
+`pytest` includes a guard that fails if non-fictional `*.lan` hostnames appear in committed template files (only `*.example.lan` is allowed).
 
 ## Fleet Scripts
 

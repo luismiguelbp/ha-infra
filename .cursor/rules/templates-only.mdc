@@ -10,6 +10,7 @@ Use `AGENTS.md` as the source of truth for this repository.
 Important Cursor-specific reminder:
 
 - This repository contains templates only.
-- Use fictional names from `ansible/inventory/` in examples.
-- Never add real hostnames, real locations, secrets, credential hashes, or production config.
+- Use fictional names from `ansible/inventory/` in examples (`edge-node-1.example.lan`, not production LAN domains).
+- Never add real hostnames, real DNS names (including service aliases), real locations, secrets, credential hashes, or production config.
+- Production names from fleet investigations may appear in chat; do not copy them into committed files in this repo.
 - Before editing or operating this repo, follow the rules in `AGENTS.md`.
