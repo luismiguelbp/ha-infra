@@ -1,22 +1,22 @@
 ---
 name: infra-fleet
-description: Deploy and operate the managed-infra Linux fleet via bin/ scripts and Ansible. Use when running infra-bootstrap, infra-deploy-edge-stack, infra-backup-edge-stack, infra-restore-edge-stack, infra-reboot, fleet status checks, MANAGED_INFRA_CONFIG_SRC, Ansible playbooks, or provisioning Docker Compose edge stack services on remote hosts.
+description: Deploy and operate the managed-infra Linux fleet via bin/ scripts and Ansible. Use when running infra-bootstrap, infra-deploy-edge-stack, infra-backup-edge-stack, infra-restore-edge-stack, infra-reboot, fleet status checks, MANAGED_INFRA_CONFIG, Ansible playbooks, or provisioning Docker Compose edge stack services on remote hosts.
 ---
 
 # managed-infra fleet operations
 
 Infrastructure-as-code for a small Linux server fleet. Run all commands from the **managed-infra repo root** on your control machine.
 
-Follow `AGENTS.md`: examples in this repo use fictional names (`edge-node-1`, `site-a`); live deploys use inventory from `MANAGED_INFRA_CONFIG_SRC`. Do not copy production hostnames or DNS aliases into committed files here.
+Follow `AGENTS.md`: examples in this repo use fictional names (`edge-node-1`, `site-a`); live deploys use inventory from `MANAGED_INFRA_CONFIG`. Do not copy production hostnames or DNS aliases into committed files here.
 
 ## Two-repo model
 
 | Repo | Role |
 |------|------|
 | `managed-infra` | Playbooks, roles, templates, wrapper scripts, and example inventory |
-| `MANAGED_INFRA_CONFIG_SRC` | Real inventory, secrets, production Compose files, and tuned data files |
+| External config clone | Real inventory, secrets, production Compose files, and tuned data files |
 
-Set `MANAGED_INFRA_CONFIG_SRC` in gitignored `.env`. Every `bin/ansible-*` and `bin/infra-*` script validates this path and refuses template directories.
+Set `MANAGED_INFRA_CONFIG` in gitignored `.env`. Every `bin/ansible-*` and `bin/infra-*` script validates this path and refuses template directories.
 
 **Never** read, echo, or commit secrets from the external config source (`.env`, `passwords_file`, credential hashes, or production service config).
 
@@ -24,7 +24,7 @@ Set `MANAGED_INFRA_CONFIG_SRC` in gitignored `.env`. Every `bin/ansible-*` and `
 
 - Ansible: `brew install ansible`
 - Collections: `ansible-galaxy collection install -r ansible/requirements.yml`
-- `.env` with valid `MANAGED_INFRA_CONFIG_SRC`
+- `.env` with valid `MANAGED_INFRA_CONFIG`
 - SSH key access and passwordless sudo on each host (`docs/ansible.md`)
 
 ## Script picker
@@ -43,7 +43,7 @@ Set `MANAGED_INFRA_CONFIG_SRC` in gitignored `.env`. Every `bin/ansible-*` and `
 
 All scripts accept Ansible extras: `--limit <host>`, `--check`, `-e key=value`.
 
-At runtime, host names come from `$MANAGED_INFRA_CONFIG_SRC/ansible/inventory/hosts.yml` (inventory name, not DNS). Template examples are `edge-node-1`, `edge-node-2`, and `edge-node-3`.
+At runtime, host names come from `$MANAGED_INFRA_CONFIG/ansible/inventory/hosts.yml` (inventory name, not DNS). Template examples are `edge-node-1`, `edge-node-2`, and `edge-node-3`.
 
 ## Deploy workflow
 
@@ -73,14 +73,14 @@ At runtime, host names come from `$MANAGED_INFRA_CONFIG_SRC/ansible/inventory/ho
 
 ## Backup mirrors
 
-Set `MANAGED_INFRA_BACKUP_DEST` in gitignored `.env`, then run:
+Set `MANAGED_INFRA_BACKUP` in gitignored `.env`, then run:
 
 ```bash
 ./bin/infra-backup-edge-stack
 ./bin/infra-backup-edge-stack --limit edge-node-1
 ```
 
-Each run mirrors runtime files into `MANAGED_INFRA_BACKUP_DEST/<host>/` with no timestamp subfolders.
+Each run mirrors runtime files into `MANAGED_INFRA_BACKUP/<host>/` with no timestamp subfolders.
 
 ## Restore backup mirrors
 

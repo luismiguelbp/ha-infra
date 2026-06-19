@@ -15,7 +15,7 @@ Uses `./bin/infra-reboot`.
 - No parameter: reboot all hosts in inventory.
 - One hostname: add `--limit <hostname>` using the inventory name from `./bin/infra-list-hosts`, not DNS.
 
-Examples in this repo use template names (`edge-node-1`, `edge-node-2`, `edge-node-3`). Live inventory comes from `MANAGED_INFRA_CONFIG_SRC`; see `AGENTS.md`.
+Examples in this repo use template names (`edge-node-1`, `edge-node-2`, `edge-node-3`). Live inventory comes from `MANAGED_INFRA_CONFIG`; see `AGENTS.md`.
 
 ## Steps
 

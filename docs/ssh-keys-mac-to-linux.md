@@ -1,6 +1,6 @@
 # SSH Keys: Mac to Linux
 
-Key-based SSH from your Mac to Linux servers. Hostnames and SSH user come from [ansible/inventory/](../ansible/inventory/) (production names live in `MANAGED_INFRA_CONFIG_SRC`).
+Key-based SSH from your Mac to Linux servers. Hostnames and SSH user come from [ansible/inventory/](../ansible/inventory/) (production names live in `MANAGED_INFRA_CONFIG`).
 
 ## Generate key (Mac)
 

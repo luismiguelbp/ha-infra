@@ -29,7 +29,7 @@ Each host declares which Compose services it runs via `edge_stack_compose_files`
 | edge-node-2 | MQTT edge | Node-RED, Mosquitto |
 | edge-node-3 | Database / metrics | PostgreSQL, Grafana |
 
-Production inventory in `MANAGED_INFRA_CONFIG_SRC` should mirror the same pattern (MQTT edge hosts and a database/metrics host) while keeping real hostnames and DNS details out of this repository.
+Production inventory in `MANAGED_INFRA_CONFIG` should mirror the same pattern (MQTT edge hosts and a database/metrics host) while keeping real hostnames and DNS details out of this repository.
 
 **`edge_stack_data_files`** — the role default copies starter files from `docker/data/` to the host when missing (`mosquitto.conf`, `passwords_file`, `settings.js`). Ansible never overwrites files that already exist on the host.
 
@@ -114,7 +114,7 @@ Run from the repo root. All scripts use `ansible/ansible.cfg` and the fleet inve
 | `bin/infra-install-docker` | Docker install only (`--tags docker`) |
 | `bin/infra-deploy-edge-stack` | Deploy edge stack Compose services (`--tags edge_stack`) |
 | `bin/infra-docker-status` | Docker daemon, compose, uptime, and disk status |
-| `bin/infra-backup-edge-stack` | Mirror edge stack data to `MANAGED_INFRA_BACKUP_DEST` |
+| `bin/infra-backup-edge-stack` | Mirror edge stack data to `MANAGED_INFRA_BACKUP` |
 | `bin/infra-restore-edge-stack` | Push backup mirror to one host (`--limit` required) |
 | `bin/infra-configure-firewall` | Configure UFW (`--tags firewall`) |
 | `bin/infra-configure-samba` | Configure Samba public share and SMB firewall (`--tags firewall,samba`) |
@@ -147,8 +147,8 @@ Set both required variables in gitignored `.env`:
 
 ```bash
 cp .env.example .env
-# MANAGED_INFRA_CONFIG_SRC=/path/to/managed-infra-config-src
-# MANAGED_INFRA_BACKUP_DEST=/path/on/your/mac/for/host-mirrors
+# MANAGED_INFRA_CONFIG=/path/to/managed-infra-config
+# MANAGED_INFRA_BACKUP=/path/on/your/mac/for/host-mirrors
 ```
 
 Install collections and tools prerequisites:
@@ -165,7 +165,7 @@ Run backup:
 ./bin/infra-backup-edge-stack --limit edge-node-1
 ```
 
-Each run refreshes `MANAGED_INFRA_BACKUP_DEST/<inventory_hostname>/` in place (no timestamp folders). Do not commit mirrored backup data or `.env` files.
+Each run refreshes `MANAGED_INFRA_BACKUP/<inventory_hostname>/` in place (no timestamp folders). Do not commit mirrored backup data or `.env` files.
 
 For a consistent Grafana mirror (brief downtime on database hosts), stop Grafana before rsync:
 
@@ -305,17 +305,17 @@ Compose files live in `docker/` at the repo root. The role copies them to `/opt/
 
 This repository holds **templates** (`docker/`, `ansible/inventory/`). Do not deploy them to Pis.
 
-Keep final configs in a separate clone (for example `managed-infra-config-src`). Set the path in a gitignored `.env` at the repo root:
+Keep final configs in a separate clone (for example `managed-infra-config`). Set the path in a gitignored `.env` at the repo root:
 
 ```bash
 cp .env.example .env
-# MANAGED_INFRA_CONFIG_SRC=/path/to/managed-infra-config-src
+# MANAGED_INFRA_CONFIG=/path/to/managed-infra-config
 ```
 
-Expected layout in `MANAGED_INFRA_CONFIG_SRC`:
+Expected layout in `MANAGED_INFRA_CONFIG`:
 
 ```
-managed-infra-config-src/
+managed-infra-config/
 ├── ansible/inventory/
 │   ├── hosts.yml
 │   ├── host_vars/
@@ -327,11 +327,11 @@ managed-infra-config-src/
     └── data/                # mosquitto.conf, settings.js, etc.
 ```
 
-Before every Ansible command (`bin/ansible-playbook`, `bin/ansible-run`, `bin/infra-list-hosts`), scripts verify that `MANAGED_INFRA_CONFIG_SRC` is set, paths are not this repo's templates, and required `docker/` files exist.
+Before every Ansible command (`bin/ansible-playbook`, `bin/ansible-run`, `bin/infra-list-hosts`), scripts verify that `MANAGED_INFRA_CONFIG` is set, paths are not this repo's templates, and required `docker/` files exist.
 
-**Deploy flow:** Ansible reads from `MANAGED_INFRA_CONFIG_SRC`, then the `edge_stack` role **copies** those files to `/opt/docker` on each Pi (Compose files, `env.example`, optional `.env`, and data files when missing on the host). Per-host `edge_stack_compose_files` in inventory sets `COMPOSE_FILE` and `COMPOSE_PROJECT_NAME` in `/opt/docker/.env` on each run (secrets in `.env` are left unchanged). Inventory targets come from `$MANAGED_INFRA_CONFIG_SRC/ansible/inventory/hosts.yml`.
+**Deploy flow:** Ansible reads from `MANAGED_INFRA_CONFIG`, then the `edge_stack` role **copies** those files to `/opt/docker` on each Pi (Compose files, `env.example`, optional `.env`, and data files when missing on the host). Per-host `edge_stack_compose_files` in inventory sets `COMPOSE_FILE` and `COMPOSE_PROJECT_NAME` in `/opt/docker/.env` on each run (secrets in `.env` are left unchanged). Inventory targets come from `$MANAGED_INFRA_CONFIG/ansible/inventory/hosts.yml`.
 
-Override per run with `-i` or `-e edge_stack_local_src=...` (later flags win; pre-flight still validates `MANAGED_INFRA_CONFIG_SRC`).
+Override per run with `-i` or `-e edge_stack_docker_dir=...` (later flags win; pre-flight still validates `MANAGED_INFRA_CONFIG`).
 
 Keep secrets in the external clone outside this workspace. Use `.cursorignore` in both repos.
 
@@ -339,7 +339,7 @@ Keep secrets in the external clone outside this workspace. Use `.cursorignore` i
 
 Secrets are created manually on each Pi (not in Ansible vars). See [docker/README.md](../docker/README.md#credentials).
 
-Ansible deploys `env.example`. When `docker/.env` exists on the control machine (under the repo or under `MANAGED_INFRA_CONFIG_SRC`) it is copied to `/opt/docker/.env` on each host. Containers start only when `.env` exists on the host.
+Ansible deploys `env.example`. When `docker/.env` exists on the control machine (under the repo or under `MANAGED_INFRA_CONFIG`) it is copied to `/opt/docker/.env` on each host. Containers start only when `.env` exists on the host.
 
 ### Firewall role
 

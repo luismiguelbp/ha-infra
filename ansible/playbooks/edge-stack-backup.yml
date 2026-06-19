@@ -5,7 +5,7 @@
   vars:
     # Set -e edge_stack_backup_stop_grafana=true for a consistent Grafana mirror (brief downtime).
     edge_stack_backup_stop_grafana: false
-    host_backup_root: "{{ managed_infra_backup_dest }}/{{ inventory_hostname }}"
+    host_backup_root: "{{ managed_infra_backup }}/{{ inventory_hostname }}"
     host_backup_data_root: "{{ host_backup_root }}/data"
     host_backup_dumps_root: "{{ host_backup_root }}/dumps"
     remote_env_path: "{{ edge_stack_path }}/.env"

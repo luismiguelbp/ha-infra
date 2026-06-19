@@ -29,7 +29,7 @@
 
 - name: Deploy Compose files from repository
   ansible.builtin.copy:
-    src: "{{ edge_stack_local_src }}/{{ item }}"
+    src: "{{ edge_stack_docker_dir }}/{{ item }}"
     dest: "{{ edge_stack_path }}/{{ item }}"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
@@ -38,7 +38,7 @@
 
 - name: Deploy environment example
   ansible.builtin.copy:
-    src: "{{ edge_stack_local_src }}/env.example"
+    src: "{{ edge_stack_docker_dir }}/env.example"
     dest: "{{ edge_stack_path }}/env.example"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
@@ -46,7 +46,7 @@
 
 - name: Check whether local edge stack environment file exists
   ansible.builtin.stat:
-    path: "{{ edge_stack_local_src }}/.env"
+    path: "{{ edge_stack_docker_dir }}/.env"
   delegate_to: localhost
   become: false
   run_once: true
@@ -54,7 +54,7 @@
 
 - name: Deploy edge stack environment file from control machine
   ansible.builtin.copy:
-    src: "{{ edge_stack_local_src }}/.env"
+    src: "{{ edge_stack_docker_dir }}/.env"
     dest: "{{ edge_stack_path }}/.env"
     owner: "{{ ansible_user }}"
     group: "{{ ansible_user }}"
@@ -70,7 +70,7 @@
 
 - name: Install edge stack data files when missing
   ansible.builtin.copy:
-    src: "{{ edge_stack_local_src }}/{{ item.item.src }}"
+    src: "{{ edge_stack_docker_dir }}/{{ item.item.src }}"
     dest: "{{ edge_stack_path }}/{{ item.item.src }}"
     owner: >-
       {{ edge_stack_mosquitto_uid if item.item.owner == 'mosquitto' else edge_stack_uid }}

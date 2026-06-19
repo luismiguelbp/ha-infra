@@ -4,7 +4,7 @@
 edge_stack_path: /opt/docker
 
 # Compose files copied from managed-infra/docker/ on the control machine.
-edge_stack_local_src: "{{ playbook_dir }}/../../docker"
+edge_stack_docker_dir: "{{ playbook_dir }}/../../docker"
 
 edge_stack_compose_files:
   - compose.yml

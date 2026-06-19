@@ -13,7 +13,7 @@ Check fleet health on all configured Linux hosts, or on one host when a hostname
 - No parameter: status for all hosts in inventory.
 - One hostname: add `--limit <hostname>` using the inventory name from `./bin/infra-list-hosts`, not DNS.
 
-Examples in this repo use template names (`edge-node-1`, `edge-node-2`, `edge-node-3`). Live inventory comes from `MANAGED_INFRA_CONFIG_SRC`; see `AGENTS.md`.
+Examples in this repo use template names (`edge-node-1`, `edge-node-2`, `edge-node-3`). Live inventory comes from `MANAGED_INFRA_CONFIG`; see `AGENTS.md`.
 
 ## Steps
 
@@ -24,7 +24,7 @@ Examples in this repo use template names (`edge-node-1`, `edge-node-2`, `edge-no
 
 ## Rules
 
-- Do not read or print secrets from `MANAGED_INFRA_CONFIG_SRC`.
+- Do not read or print secrets from `MANAGED_INFRA_CONFIG`.
 - If ping fails for a host, report it separately from container status.
 
 ## Output

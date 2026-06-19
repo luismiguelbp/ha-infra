@@ -5,10 +5,10 @@ source "$(cd "$(dirname "$0")" && pwd)/_lib.sh"
 ansible_cd
 ensure_ansible
 
-verify_managed_infra_config_src
+verify_managed_infra_config
 extra_args=(
   -i "$MANAGED_INFRA_INVENTORY_FILE"
-  -e "edge_stack_local_src=$MANAGED_INFRA_DOCKER_SRC"
+  -e "edge_stack_docker_dir=$MANAGED_INFRA_DOCKER"
 )
 
 exec ansible-playbook "${extra_args[@]}" "$@"
