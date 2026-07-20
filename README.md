@@ -1,4 +1,4 @@
-# managed-infra
+# ha-infra
 
 Infrastructure-as-code for a small Raspberry Pi fleet. Ansible and Docker Compose on the devices; wrapper scripts on your Mac.
 
@@ -16,7 +16,7 @@ First-time setup on your Mac, in order:
 
 1. [SSH keys to each Pi](docs/ssh-keys-mac-to-linux.md)
 2. [Passwordless sudo](docs/ansible.md#privilege-escalation-sudo) for the inventory SSH user on every host
-3. [Setup](#setup) — venv, dependencies, and `MANAGED_INFRA_CONFIG` in `.env`
+3. [Setup](#setup) — venv, dependencies, and `HA_INFRA_CONFIG` in `.env`
 4. Ansible collections (once): `ansible-galaxy collection install -r ansible/requirements.yml`
 5. Bootstrap: `./bin/infra-bootstrap --check`, then `./bin/infra-bootstrap`
 6. [Edge stack credentials](docker/README.md#credentials) on each Pi, then `./bin/infra-docker-status`
@@ -35,8 +35,8 @@ Day-to-day commands and options: [docs/ansible.md](docs/ansible.md).
 python -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
-cp .env.example .env   # required: set MANAGED_INFRA_CONFIG (external clone with real docker/ configs)
-# optional for backups: set MANAGED_INFRA_BACKUP (local mirror root on your Mac)
+cp .env.example .env   # required: set HA_INFRA_CONFIG (external clone with real docker/ configs)
+# optional for backups: set HA_INFRA_BACKUP (local mirror root on your Mac)
 ```
 
 ## Test
@@ -67,7 +67,7 @@ Edge stack credentials are set manually on each Pi. See [docker/README.md](docke
 ## Workflow
 
 1. Develop playbooks and **templates** in this repo (`docker/`, `ansible/inventory/` are not deployed as-is).
-2. Maintain final configs (hosts, secrets, tuned `mosquitto.conf`, etc.) in `MANAGED_INFRA_CONFIG` (see `.env.example`).
+2. Maintain final configs (hosts, secrets, tuned `mosquitto.conf`, etc.) in `HA_INFRA_CONFIG` (see `.env.example`).
 3. Run `bin/` helpers — they verify the external paths, then Ansible copies `docker/` files to `/opt/docker` on each Pi.
 
 ## AI agent context

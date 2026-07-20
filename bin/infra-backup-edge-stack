@@ -4,8 +4,8 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 source "$ROOT/bin/_lib.sh"
 
-verify_managed_infra_backup
+verify_ha_infra_backup
 
 exec "$ROOT/bin/ansible-playbook" \
-  -e "managed_infra_backup=$MANAGED_INFRA_BACKUP" \
+  -e "ha_infra_backup=$HA_INFRA_BACKUP" \
   playbooks/edge-stack-backup.yml "$@"

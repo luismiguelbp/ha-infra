@@ -3,7 +3,7 @@
 # Override per host when using a USB SSD (e.g. /mnt/ssd/docker).
 edge_stack_path: /opt/docker
 
-# Compose files copied from managed-infra/docker/ on the control machine.
+# Compose files copied from ha-infra/docker/ on the control machine.
 edge_stack_docker_dir: "{{ playbook_dir }}/../../docker"
 
 edge_stack_compose_files:

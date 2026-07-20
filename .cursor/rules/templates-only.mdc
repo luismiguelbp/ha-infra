@@ -1,9 +1,9 @@
 ---
-description: managed-infra uses AGENTS.md as the source of truth for template-only and secret-handling rules
+description: ha-infra uses AGENTS.md as the source of truth for template-only and secret-handling rules
 alwaysApply: true
 ---
 
-# managed-infra Agent Guide
+# ha-infra Agent Guide
 
 Use `AGENTS.md` as the source of truth for this repository.
 

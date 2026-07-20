@@ -1,6 +1,6 @@
 ---
 name: infra-deploy
-description: Run the managed-infra full fleet bootstrap workflow. Use when the user asks to deploy, bootstrap, provision, or run infra-bootstrap for all hosts or a single host.
+description: Run the ha-infra full fleet bootstrap workflow. Use when the user asks to deploy, bootstrap, provision, or run infra-bootstrap for all hosts or a single host.
 disable-model-invocation: true
 ---
 
@@ -8,14 +8,14 @@ disable-model-invocation: true
 
 Run a full fleet bootstrap on all configured Linux hosts, or on one host when a hostname is passed. Template example: `/infra-deploy edge-node-1`.
 
-Uses `./bin/infra-bootstrap` from the managed-infra repo root.
+Uses `./bin/infra-bootstrap` from the ha-infra repo root.
 
 ## Host parameter
 
 - No parameter: deploy all hosts in inventory.
 - One hostname: add `--limit <hostname>` using the inventory name from `./bin/infra-list-hosts`, not DNS.
 
-Examples in this repo use template names (`edge-node-1`, `edge-node-2`, `edge-node-3`). Live inventory comes from `MANAGED_INFRA_CONFIG`; see `AGENTS.md`.
+Examples in this repo use template names (`edge-node-1`, `edge-node-2`, `edge-node-3`). Live inventory comes from `HA_INFRA_CONFIG`; see `AGENTS.md`.
 
 ## Steps
 
@@ -27,7 +27,7 @@ Examples in this repo use template names (`edge-node-1`, `edge-node-2`, `edge-no
 
 ## Rules
 
-- Do not read or print secrets from `MANAGED_INFRA_CONFIG`.
+- Do not read or print secrets from `HA_INFRA_CONFIG`.
 - If ping fails, stop and report; do not run bootstrap.
 - For Compose-only updates after initial bootstrap, suggest `./bin/infra-deploy-edge-stack` instead.
 

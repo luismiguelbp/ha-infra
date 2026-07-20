@@ -2,5 +2,5 @@
 - name: Reboot Linux host
   ansible.builtin.reboot:
     reboot_timeout: 300
-    msg: Reboot triggered by managed-infra infra-reboot
+    msg: Reboot triggered by ha-infra infra-reboot
   tags: [reboot]

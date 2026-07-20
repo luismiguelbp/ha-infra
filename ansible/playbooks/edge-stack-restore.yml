@@ -3,13 +3,13 @@
   hosts: linux_hosts
   gather_facts: false
   vars:
-    # Backup folder name under MANAGED_INFRA_BACKUP (defaults to --limit host).
+    # Backup folder name under HA_INFRA_BACKUP (defaults to --limit host).
     edge_stack_restore_source: "{{ inventory_hostname }}"
     # Copy mirrored .env and reconcile COMPOSE_FILE / COMPOSE_PROJECT_NAME for the target.
     edge_stack_restore_env: false
     # Stop compose services before restore and bring them back up afterward.
     edge_stack_restore_stop_services: true
-    host_backup_root: "{{ managed_infra_backup }}/{{ edge_stack_restore_source }}"
+    host_backup_root: "{{ ha_infra_backup }}/{{ edge_stack_restore_source }}"
     host_backup_data_root: "{{ host_backup_root }}/data"
     host_backup_dumps_root: "{{ host_backup_root }}/dumps"
     remote_env_path: "{{ edge_stack_path }}/.env"

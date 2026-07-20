@@ -1,6 +1,6 @@
 ---
 name: infra-reboot
-description: Reboot all managed-infra Linux hosts or one limited host using the infra-reboot helper.
+description: Reboot all ha-infra Linux hosts or one limited host using the infra-reboot helper.
 disable-model-invocation: true
 ---
 
@@ -15,7 +15,7 @@ Uses `./bin/infra-reboot`.
 - No parameter: reboot all hosts in inventory.
 - One hostname: add `--limit <hostname>` using the inventory name from `./bin/infra-list-hosts`, not DNS.
 
-Examples in this repo use template names (`edge-node-1`, `edge-node-2`, `edge-node-3`). Live inventory comes from `MANAGED_INFRA_CONFIG`; see `AGENTS.md`.
+Examples in this repo use template names (`edge-node-1`, `edge-node-2`, `edge-node-3`). Live inventory comes from `HA_INFRA_CONFIG`; see `AGENTS.md`.
 
 ## Steps
 

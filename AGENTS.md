@@ -1,4 +1,4 @@
-# managed-infra Agent Guide
+# ha-infra Agent Guide
 
 This repository contains infrastructure-as-code templates for a small Linux fleet. It is safe to edit templates here, but production inventory, secrets, and tuned configs live outside this repository.
 
@@ -24,8 +24,8 @@ That includes **service aliases and secondary DNS names** (for example MQTT brok
 
 | Context | Names to use |
 |---------|----------------|
-| Committed files in `managed-infra` (docs, README, tests, comments, examples) | Fictional template names only |
-| Live fleet operations (`MANAGED_INFRA_CONFIG`, Ansible, SSH, status checks) | Production inventory from the external config clone |
+| Committed files in `ha-infra` (docs, README, tests, comments, examples) | Fictional template names only |
+| Live fleet operations (`HA_INFRA_CONFIG`, Ansible, SSH, status checks) | Production inventory from the external config clone |
 | Chat or investigation summaries | Production names are fine when reporting status; **sanitize before writing to this repo** |
 
 When troubleshooting on production hosts, do not paste discovered hostnames, DNS aliases, or IPs into files that will be committed here. Translate examples to `edge-node-N.example.lan` and `site-a` / `site-b` / `site-c`.
@@ -34,12 +34,12 @@ When troubleshooting on production hosts, do not paste discovered hostnames, DNS
 
 | Repo | Role |
 |------|------|
-| `managed-infra` | Playbooks, roles, templates, wrapper scripts, and example inventory |
+| `ha-infra` | Playbooks, roles, templates, wrapper scripts, and example inventory |
 | External config clone | Real inventory, secrets, production Compose files, and tuned data files |
 
-Production inventory, secrets, credential hashes, and tuned service configs belong in `MANAGED_INFRA_CONFIG`, which is configured through the gitignored `.env` file.
+Production inventory, secrets, credential hashes, and tuned service configs belong in `HA_INFRA_CONFIG`, which is configured through the gitignored `.env` file.
 
-When **writing or editing files in this repo**, always use the fictional template names above. When **running deploy commands**, host names come from the live inventory under `MANAGED_INFRA_CONFIG`.
+When **writing or editing files in this repo**, always use the fictional template names above. When **running deploy commands**, host names come from the live inventory under `HA_INFRA_CONFIG`.
 
 ## Security Rules
 
@@ -50,7 +50,7 @@ When **writing or editing files in this repo**, always use the fictional templat
 
 ## Setup And Checks
 
-Run commands from the `managed-infra` repo root.
+Run commands from the `ha-infra` repo root.
 
 ```bash
 python -m venv .venv
@@ -100,7 +100,7 @@ All scripts accept Ansible extras such as `--limit <host>`, `--check`, and `-e k
 
 Standard Agent Skills are in `.agents/skills/`:
 
-- `infra-fleet`: general managed-infra fleet operations
+- `infra-fleet`: general ha-infra fleet operations
 - `infra-deploy`: full bootstrap workflow
 - `infra-status`: fleet health checks
 - `infra-backup`: backup mirror workflow

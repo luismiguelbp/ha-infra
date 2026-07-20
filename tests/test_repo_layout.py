@@ -88,8 +88,8 @@ def test_infra_configure_samba_script_and_role_files_exist() -> None:
 def test_env_example_includes_config_and_backup_vars() -> None:
     """.env.example documents external config and backup paths."""
     env_example = (PROJECT_ROOT / ".env.example").read_text()
-    assert "MANAGED_INFRA_CONFIG=" in env_example
-    assert "MANAGED_INFRA_BACKUP=" in env_example
+    assert "HA_INFRA_CONFIG=" in env_example
+    assert "HA_INFRA_BACKUP=" in env_example
 
 
 def test_edge_stack_utility_playbooks_preserve_inventory_precedence() -> None:

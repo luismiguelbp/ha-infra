@@ -1,1 +1,1 @@
-"""Tests for managed-infra."""
+"""Tests for ha-infra."""

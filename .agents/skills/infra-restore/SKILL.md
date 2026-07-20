@@ -1,25 +1,25 @@
 ---
 name: infra-restore
-description: Restore a managed-infra backup mirror from MANAGED_INFRA_BACKUP to exactly one deployed host.
+description: Restore a ha-infra backup mirror from HA_INFRA_BACKUP to exactly one deployed host.
 disable-model-invocation: true
 ---
 
 # Infra Restore
 
-Push a backup mirror from `MANAGED_INFRA_BACKUP` onto a **single** deployed host. This is a manual operation only and is not part of bootstrap or deploy flows.
+Push a backup mirror from `HA_INFRA_BACKUP` onto a **single** deployed host. This is a manual operation only and is not part of bootstrap or deploy flows.
 
 ## Host parameter
 
 - Required: `--limit <hostname>` using the inventory name from `./bin/infra-list-hosts`, not DNS.
 - Optional source override: `-e edge_stack_restore_source=<backup-folder-name>` when the mirror folder name differs from the target host.
 
-Examples in this repo use template names (`edge-node-1`, `edge-node-2`, `edge-node-3`). Live inventory comes from `MANAGED_INFRA_CONFIG`.
+Examples in this repo use template names (`edge-node-1`, `edge-node-2`, `edge-node-3`). Live inventory comes from `HA_INFRA_CONFIG`.
 
 ## Steps
 
 1. Confirm the repo root.
-2. Ensure `MANAGED_INFRA_BACKUP` is set in gitignored `.env`, but do not print secret values.
-3. Confirm the mirror exists under `MANAGED_INFRA_BACKUP/<source-host>/`.
+2. Ensure `HA_INFRA_BACKUP` is set in gitignored `.env`, but do not print secret values.
+3. Confirm the mirror exists under `HA_INFRA_BACKUP/<source-host>/`.
 4. Bootstrap the target first only if it is a new host: `./bin/infra-bootstrap --limit <host>`.
 5. Ping with `./bin/infra-ping --limit <host>`.
 6. Run restore with `./bin/infra-restore-edge-stack --limit <host>`.

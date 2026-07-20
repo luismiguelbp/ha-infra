@@ -29,11 +29,11 @@ load_project_env() {
   fi
 }
 
-# Set by verify_managed_infra_config for ansible wrappers.
-MANAGED_INFRA_INVENTORY_FILE=""
-MANAGED_INFRA_DOCKER=""
+# Set by verify_ha_infra_config for ansible wrappers.
+HA_INFRA_INVENTORY_FILE=""
+HA_INFRA_DOCKER=""
 
-# Required deploy files under MANAGED_INFRA_CONFIG/docker (must not be repo templates).
+# Required deploy files under HA_INFRA_CONFIG/docker (must not be repo templates).
 EDGE_STACK_REQUIRED_FILES=(
   compose.yml
   compose-mosquitto.yml
@@ -43,45 +43,45 @@ EDGE_STACK_REQUIRED_FILES=(
   env.example
 )
 
-# Verify external configs and set MANAGED_INFRA_* paths for Ansible.
-# Refuses repo templates so deployments always use MANAGED_INFRA_CONFIG.
-verify_managed_infra_config() {
+# Verify external configs and set HA_INFRA_* paths for Ansible.
+# Refuses repo templates so deployments always use HA_INFRA_CONFIG.
+verify_ha_infra_config() {
   load_project_env
 
-  if [[ -z "${MANAGED_INFRA_CONFIG:-}" ]]; then
-    echo "MANAGED_INFRA_CONFIG is not set. Add it to .env (see .env.example)." >&2
+  if [[ -z "${HA_INFRA_CONFIG:-}" ]]; then
+    echo "HA_INFRA_CONFIG is not set. Add it to .env (see .env.example)." >&2
     echo "Refusing to run: this repository contains templates only." >&2
     exit 1
   fi
 
-  if [[ ! -d "$MANAGED_INFRA_CONFIG" ]]; then
-    echo "MANAGED_INFRA_CONFIG not found: $MANAGED_INFRA_CONFIG" >&2
+  if [[ ! -d "$HA_INFRA_CONFIG" ]]; then
+    echo "HA_INFRA_CONFIG not found: $HA_INFRA_CONFIG" >&2
     exit 1
   fi
 
-  local inventory_src="$MANAGED_INFRA_CONFIG/ansible/inventory/hosts.yml"
+  local inventory_src="$HA_INFRA_CONFIG/ansible/inventory/hosts.yml"
   if [[ ! -f "$inventory_src" ]]; then
-    echo "MANAGED_INFRA_CONFIG is missing ansible/inventory/hosts.yml" >&2
+    echo "HA_INFRA_CONFIG is missing ansible/inventory/hosts.yml" >&2
     exit 1
   fi
 
   local repo_inventory
   repo_inventory="$(cd "$(project_root)/ansible/inventory" && pwd)/hosts.yml"
   if [[ "$(cd "$(dirname "$inventory_src")" && pwd)/hosts.yml" == "$repo_inventory" ]]; then
-    echo "MANAGED_INFRA_CONFIG/ansible/inventory points at this repo's inventory (templates)." >&2
+    echo "HA_INFRA_CONFIG/ansible/inventory points at this repo's inventory (templates)." >&2
     exit 1
   fi
 
-  local docker_src="$MANAGED_INFRA_CONFIG/docker"
+  local docker_src="$HA_INFRA_CONFIG/docker"
   if [[ ! -d "$docker_src" ]]; then
-    echo "MANAGED_INFRA_CONFIG has no docker/ directory: $docker_src" >&2
+    echo "HA_INFRA_CONFIG has no docker/ directory: $docker_src" >&2
     exit 1
   fi
 
   local repo_docker
   repo_docker="$(cd "$(project_root)/docker" && pwd)"
   if [[ "$(cd "$docker_src" && pwd)" == "$repo_docker" ]]; then
-    echo "MANAGED_INFRA_CONFIG/docker points at this repo's docker/ (templates)." >&2
+    echo "HA_INFRA_CONFIG/docker points at this repo's docker/ (templates)." >&2
     exit 1
   fi
 
@@ -93,26 +93,26 @@ verify_managed_infra_config() {
     fi
   done
   if [[ ${#missing[@]} -gt 0 ]]; then
-    echo "MANAGED_INFRA_CONFIG/docker is missing required files: ${missing[*]}" >&2
+    echo "HA_INFRA_CONFIG/docker is missing required files: ${missing[*]}" >&2
     exit 1
   fi
 
-  MANAGED_INFRA_INVENTORY_FILE="$inventory_src"
-  MANAGED_INFRA_DOCKER="$docker_src"
+  HA_INFRA_INVENTORY_FILE="$inventory_src"
+  HA_INFRA_DOCKER="$docker_src"
 
   echo "Using inventory from: $(dirname "$inventory_src")" >&2
   echo "Using edge stack configs from: $docker_src" >&2
 }
 
-verify_managed_infra_backup() {
+verify_ha_infra_backup() {
   load_project_env
 
-  if [[ -z "${MANAGED_INFRA_BACKUP:-}" ]]; then
-    echo "MANAGED_INFRA_BACKUP is not set. Add it to .env (see .env.example)." >&2
+  if [[ -z "${HA_INFRA_BACKUP:-}" ]]; then
+    echo "HA_INFRA_BACKUP is not set. Add it to .env (see .env.example)." >&2
     exit 1
   fi
 
-  local backup_root="$MANAGED_INFRA_BACKUP"
+  local backup_root="$HA_INFRA_BACKUP"
   if [[ "$backup_root" == "~"* ]]; then
     backup_root="${HOME}${backup_root:1}"
   fi
@@ -120,24 +120,24 @@ verify_managed_infra_backup() {
   local backup_parent
   backup_parent="$(dirname "$backup_root")"
   if [[ ! -d "$backup_parent" ]]; then
-    echo "Parent directory for MANAGED_INFRA_BACKUP does not exist: $backup_parent" >&2
+    echo "Parent directory for HA_INFRA_BACKUP does not exist: $backup_parent" >&2
     exit 1
   fi
 
   mkdir -p "$backup_root"
 
-  MANAGED_INFRA_BACKUP="$(cd "$backup_root" && pwd)"
+  HA_INFRA_BACKUP="$(cd "$backup_root" && pwd)"
 
   local repo_root
   repo_root="$(project_root)"
-  case "$MANAGED_INFRA_BACKUP" in
+  case "$HA_INFRA_BACKUP" in
     "$repo_root"|"$repo_root"/*)
-      echo "MANAGED_INFRA_BACKUP must be outside this git repository: $repo_root" >&2
+      echo "HA_INFRA_BACKUP must be outside this git repository: $repo_root" >&2
       exit 1
       ;;
   esac
 
-  echo "Using backup root: $MANAGED_INFRA_BACKUP" >&2
+  echo "Using backup root: $HA_INFRA_BACKUP" >&2
 }
 
 # Parse --limit / -l from ansible-playbook args; prints exactly one inventory hostname.
@@ -270,7 +270,7 @@ filter_ansible_args_without_limit() {
 
 verify_backup_mirror_exists() {
   local source_host="$1"
-  local mirror_root="$MANAGED_INFRA_BACKUP/$source_host"
+  local mirror_root="$HA_INFRA_BACKUP/$source_host"
 
   if [[ ! -f "$mirror_root/manifest.json" ]]; then
     echo "Backup mirror not found: $mirror_root/manifest.json" >&2

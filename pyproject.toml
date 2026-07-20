@@ -1,5 +1,5 @@
 [project]
-name = "managed-infra"
+name = "ha-infra"
 version = "0.1.0"
 description = "Infrastructure-as-code for a small Raspberry Pi fleet"
 readme = "README.md"
