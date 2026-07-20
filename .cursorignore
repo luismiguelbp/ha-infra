@@ -2,5 +2,7 @@
 
 .env
 **/.env
-docker/data/mosquitto/config/passwords_file
+**/.env.*
+**/passwords_file
+**/*.pem
 local/
