@@ -3,11 +3,12 @@
 #
 # Available services (add to COMPOSE_FILE in .env):
 #   - compose-portainer.yml    : Docker management UI
-#   - compose-node-red.yml     : Flow-based programming
+#   - compose-node-red.yml     : Flow-based programming (also mounts data/sqlite)
 #   - compose-mosquitto.yml    : MQTT broker
-#   - compose-postgresql.yml   : Database (Grafana backend)
-#   - compose-grafana.yml      : Dashboards
+#   - compose-postgresql.yml   : Central history database (home site)
+#   - compose-grafana.yml      : Dashboards (home site)
 #
+# SQLite automation DB is a file under data/sqlite/ (not a Compose service).
 # Example: COMPOSE_FILE=compose.yml,compose-node-red.yml,compose-mosquitto.yml
 # Database stack: COMPOSE_FILE=compose.yml,compose-postgresql.yml,compose-grafana.yml
 

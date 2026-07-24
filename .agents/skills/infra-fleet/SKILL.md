@@ -9,6 +9,16 @@ Infrastructure-as-code for a small Linux server fleet. Run all commands from the
 
 Follow `AGENTS.md`: examples in this repo use fictional names (`edge-node-1`, `site-a`); live deploys use inventory from `HA_INFRA_CONFIG`. Do not copy production hostnames or DNS aliases into committed files here.
 
+## Edge stack profiles
+
+| Profile | Services | Template host |
+|---------|----------|---------------|
+| **Autonomous site** | Node-RED, Mosquitto, SQLite mount | edge-node-2 |
+| **Home history tier** | PostgreSQL, Grafana | edge-node-3 |
+| **Full lab** | All services | edge-node-1 |
+
+SQLite (`data/sqlite/automation.db`) is a file bind-mounted into Node-RED — not a Compose service. Do not assume PostgreSQL or Grafana belong on autonomous site hosts.
+
 ## Two-repo model
 
 | Repo | Role |

@@ -4,7 +4,7 @@ dns_name: edge-node-3.example.lan
 role: edge
 hardware_model: Raspberry Pi 3 B+
 
-# Database and metrics stack (PostgreSQL + Grafana).
+# Home history tier (PostgreSQL + Grafana).
 edge_stack_compose_files:
   - compose.yml
   - compose-postgresql.yml
@@ -17,7 +17,7 @@ edge_stack_data_dirs:
 
 # Skip auto-install of mosquitto.conf, passwords_file, and settings.js from docker/data/.
 # Use on hosts that do not run Mosquitto or Node-RED, or when you manage credentials
-# manually / restore from backup. MQTT edge hosts (edge-node-2) omit this and inherit
+# manually / restore from backup. Autonomous site hosts (edge-node-2) omit this and inherit
 # the role defaults instead.
 edge_stack_data_files: []
 

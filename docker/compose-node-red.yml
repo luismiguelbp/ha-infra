@@ -8,6 +8,8 @@ services:
       - "1880:1880"
     volumes:
       - ${DOCKER_PATH}/data/node-red/data:/data:rw
+      # Automation SQLite DB (host: data/sqlite/automation.db → container: /data/sqlite/automation.db)
+      - ${DOCKER_PATH}/data/sqlite:/data/sqlite:rw
     environment:
       - TZ=${DOCKER_TZ}
       - NODE_RED_CREDENTIAL_SECRET=${NODE_RED_CREDENTIAL_SECRET}

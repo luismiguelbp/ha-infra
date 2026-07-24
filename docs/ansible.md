@@ -23,15 +23,19 @@ Files:
 
 Each host declares which Compose services it runs via `edge_stack_compose_files` and matching `edge_stack_data_dirs` in `host_vars/`. The `edge_stack` role copies only those files, creates the data dirs, opens the right firewall ports, and sets `COMPOSE_FILE` on each Pi from the host profile.
 
-| Host | Stack | Compose services |
-|------|-------|------------------|
-| edge-node-1 | Full (lab) | Portainer, Node-RED, Mosquitto, PostgreSQL, Grafana |
-| edge-node-2 | MQTT edge | Node-RED, Mosquitto |
-| edge-node-3 | Database / metrics | PostgreSQL, Grafana |
+| Host | Profile | Compose services |
+|------|---------|------------------|
+| edge-node-1 | Full lab | Portainer, Node-RED, Mosquitto, PostgreSQL, Grafana |
+| edge-node-2 | Autonomous site | Node-RED, Mosquitto, SQLite mount |
+| edge-node-3 | Home history tier | PostgreSQL, Grafana |
 
-Production inventory in `HA_INFRA_CONFIG` should mirror the same pattern (MQTT edge hosts and a database/metrics host) while keeping real hostnames and DNS details out of this repository.
+**Autonomous site** hosts run Node-RED + Mosquitto with a mounted SQLite automation database (`data/sqlite/automation.db`). Each site is independent — no PostgreSQL or Grafana required.
 
-**`edge_stack_data_files`** — the role default copies starter files from `docker/data/` to the host when missing (`mosquitto.conf`, `passwords_file`, `settings.js`). Ansible never overwrites files that already exist on the host.
+**Home history tier** hosts run PostgreSQL + Grafana for long-term telemetry/events and cross-site dashboards. Import site catalogs into this PostgreSQL instance when central history is enabled (see ha-apps `ha-db-portal`).
+
+Production inventory in `HA_INFRA_CONFIG` should mirror the same pattern (autonomous site hosts and a home history tier host) while keeping real hostnames and DNS details out of this repository.
+
+**`edge_stack_data_files`** — the role default copies starter files from `docker/data/` to the host when missing (`mosquitto.conf`, `passwords_file`, `settings.js`, `automation.db`). Ansible never overwrites files that already exist on the host.
 
 | Host | `edge_stack_data_files` | Behaviour |
 |------|-------------------------|-----------|
@@ -44,7 +48,7 @@ Example for a host without Mosquitto or Node-RED (see `host_vars/edge-node-3.yml
 edge_stack_data_files: []
 ```
 
-Full-stack or MQTT edge hosts should omit this key (or list only the files you want seeded). Do not set `[]` on hosts that run Mosquitto unless you plan to provide `mosquitto.conf` and `passwords_file` manually.
+Full-stack or autonomous site hosts should omit this key (or list only the files you want seeded). Do not set `[]` on hosts that run Mosquitto unless you plan to provide `mosquitto.conf` and `passwords_file` manually.
 
 Database-only hosts also set `firewall_edge_ports` for Grafana (3000) and PostgreSQL (5432) instead of the MQTT defaults (1880, 1883). Hosts that include Portainer should allow 9443.
 

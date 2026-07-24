@@ -1,18 +1,36 @@
 # Edge stack (Docker Compose)
 
-Node-RED and Mosquitto on MQTT edge nodes; Portainer, PostgreSQL, and Grafana on full-stack or metrics nodes. Deployed by the Ansible `edge_stack` role to `/opt/docker` on each host.
+Autonomous sites run Node-RED, Mosquitto, and a mounted SQLite automation database.
+The home site may additionally run PostgreSQL and Grafana as a central history tier.
+Deployed by the Ansible `edge_stack` role to `/opt/docker` on each host.
+
+## Site profiles
+
+| Profile | Services | Template host | Purpose |
+|---------|----------|---------------|---------|
+| **Autonomous site** | Node-RED, Mosquitto, SQLite mount | edge-node-2 | Local automation per site |
+| **Home history tier** | PostgreSQL, Grafana | edge-node-3 | Central telemetry/events and dashboards |
+| **Full lab** | All services | edge-node-1 | Development / integration testing |
+
+SQLite is **not** a Compose service. It is a file bind-mounted into Node-RED:
+
+- **Host path:** `${DOCKER_PATH}/data/sqlite/automation.db` (default `/opt/docker/data/sqlite/automation.db`)
+- **Container path:** `/data/sqlite/automation.db`
 
 ## Services
 
-| Service | Port | Hosts | Purpose |
-|---------|------|-------|---------|
-| Portainer | 9443 | edge-node-1 | Docker management UI |
-| Node-RED | 1880 | edge-node-1, edge-node-2 | Flow editor and runtime |
-| Mosquitto | 1883, 9001 | edge-node-1, edge-node-2 | MQTT broker (9001 = WebSockets) |
-| PostgreSQL | 5432 | edge-node-1, edge-node-3 | Database (Grafana backend) |
-| Grafana | 3000 | edge-node-1, edge-node-3 | Dashboards |
+| Service | Port | Profile | Purpose |
+|---------|------|---------|---------|
+| Node-RED | 1880 | Autonomous site | Flow editor and runtime |
+| Mosquitto | 1883, 9001 | Autonomous site | MQTT broker (9001 = WebSockets) |
+| SQLite (`automation.db`) | — | Autonomous site | Per-site automation database (file mount) |
+| PostgreSQL | 5432 | Home history tier | Central history database |
+| Grafana | 3000 | Home history tier | Dashboards |
+| Portainer | 9443 | Optional (lab) | Docker management UI |
 
-`edge-node-1` runs the full stack (lab template). `edge-node-2` is MQTT-only. `edge-node-3` is database / metrics only. See per-host `edge_stack_compose_files` in `ansible/inventory/host_vars/`.
+`edge-node-1` runs the full lab stack. `edge-node-2` is the autonomous-site template.
+`edge-node-3` is the home history tier template. See per-host `edge_stack_compose_files`
+in `ansible/inventory/host_vars/`.
 
 ## Layout
 
@@ -26,8 +44,11 @@ docker/
 └── data/
     ├── portainer/            # Portainer state
     ├── node-red/data/        # settings.js starter
-    └── mosquitto/config/     # mosquitto.conf, passwords_file (manual)
+    ├── mosquitto/config/     # mosquitto.conf, passwords_file (manual)
+    └── sqlite/               # automation.db starter (mounted into Node-RED at /data/sqlite)
 ```
+
+Node-RED mounts `${DOCKER_PATH}/data/sqlite` at `/data/sqlite`. Path inside the container: `/data/sqlite/automation.db`. This is the per-site automation database (catalog, snapshots, short-retention telemetry/events). See [ha-apps database docs](https://github.com/luismiguelbp/ha-apps/blob/main/docs/database/automation.md).
 
 ## Credentials
 

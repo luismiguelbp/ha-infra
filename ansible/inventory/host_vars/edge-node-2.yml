@@ -4,7 +4,7 @@ dns_name: edge-node-2.example.lan
 role: edge
 hardware_model: Raspberry Pi 3 B+
 
-# MQTT edge stack (Mosquitto + Node-RED).
+# Autonomous site stack (Mosquitto + Node-RED + SQLite mount).
 edge_stack_compose_files:
   - compose.yml
   - compose-node-red.yml
@@ -15,9 +15,10 @@ edge_stack_data_dirs:
   - data/mosquitto/config
   - data/mosquitto/data
   - data/mosquitto/log
+  - data/sqlite
 
 # edge_stack_data_files: omitted — inherits role defaults (mosquitto.conf, passwords_file,
-# settings.js copied from docker/data/ only when missing on the host).
+# settings.js, automation.db copied from docker/data/ only when missing on the host).
 
 # Optional: move Docker data to a USB SSD
 # edge_stack_path: /mnt/ssd/docker

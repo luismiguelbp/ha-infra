@@ -38,6 +38,7 @@ edge_stack_data_dirs:
   - data/mosquitto/config
   - data/mosquitto/data
   - data/mosquitto/log
+  - data/sqlite
 
 # Files under docker/data/ installed on the Pi only when missing.
 # Override with edge_stack_data_files: [] on database/metrics-only hosts (edge-node-3).
@@ -51,3 +52,6 @@ edge_stack_data_files:
   - src: data/mosquitto/config/passwords_file
     owner: mosquitto
     mode: "0600"
+  - src: data/sqlite/automation.db
+    owner: node_red
+    mode: "0644"
