@@ -17,10 +17,14 @@
     remote_portainer_dir: "{{ edge_stack_path }}/data/portainer"
     remote_mosquitto_dir: "{{ edge_stack_path }}/data/mosquitto"
     remote_node_red_dir: "{{ edge_stack_path }}/data/node-red"
+    remote_catalog_dir: "{{ edge_stack_path }}/data/catalog"
+    remote_sqlite_dir: "{{ edge_stack_path }}/data/sqlite"
     remote_grafana_dir: "{{ edge_stack_path }}/data/grafana"
     local_portainer_dir: "{{ host_backup_data_root }}/portainer"
     local_mosquitto_dir: "{{ host_backup_data_root }}/mosquitto"
     local_node_red_dir: "{{ host_backup_data_root }}/node-red"
+    local_catalog_dir: "{{ host_backup_data_root }}/catalog"
+    local_sqlite_dir: "{{ host_backup_data_root }}/sqlite"
     local_grafana_dir: "{{ host_backup_data_root }}/grafana"
     local_postgresql_dump: "{{ host_backup_dumps_root }}/postgresql.sql"
     local_backup_env_path: "{{ host_backup_root }}/.env"
@@ -45,6 +49,11 @@
       ansible.builtin.set_fact:
         edge_stack_compose_files: "{{ edge_stack_role_defaults.edge_stack_compose_files }}"
       when: edge_stack_compose_files is not defined
+
+    - name: Apply edge stack data directory defaults when inventory omits them
+      ansible.builtin.set_fact:
+        edge_stack_data_dirs: "{{ edge_stack_role_defaults.edge_stack_data_dirs }}"
+      when: edge_stack_data_dirs is not defined
 
     - name: Apply edge stack project name default when inventory omits it
       ansible.builtin.set_fact:
@@ -100,6 +109,44 @@
       when:
         - item.value in edge_stack_compose_files
         - not (backup_manifest.services[item.key] | default(false))
+
+    - name: Warn when backup includes catalog but target host has no catalog data dir
+      ansible.builtin.debug:
+        msg: >-
+          Skipping restore for catalog:
+          backup has it but target profile lacks data/catalog.
+      when:
+        - backup_manifest.services.catalog | default(false)
+        - "'data/catalog' not in edge_stack_data_dirs"
+
+    - name: Warn when target host expects catalog but backup manifest does not
+      ansible.builtin.debug:
+        msg: >-
+          Skipping restore for catalog:
+          target profile includes data/catalog but backup manifest does not.
+      when:
+        - "'compose-node-red.yml' in edge_stack_compose_files"
+        - "'data/catalog' in edge_stack_data_dirs"
+        - not (backup_manifest.services.catalog | default(false))
+
+    - name: Warn when backup includes SQLite but target host has no SQLite data dir
+      ansible.builtin.debug:
+        msg: >-
+          Skipping restore for sqlite:
+          backup has it but target profile lacks data/sqlite.
+      when:
+        - backup_manifest.services.sqlite | default(false)
+        - "'data/sqlite' not in edge_stack_data_dirs"
+
+    - name: Warn when target host expects SQLite but backup manifest does not
+      ansible.builtin.debug:
+        msg: >-
+          Skipping restore for sqlite:
+          target profile includes data/sqlite but backup manifest does not.
+      when:
+        - "'compose-node-red.yml' in edge_stack_compose_files"
+        - "'data/sqlite' in edge_stack_data_dirs"
+        - not (backup_manifest.services.sqlite | default(false))
 
     - name: Resolve SSH user UID and GID for restored data ownership
       ansible.builtin.getent:
@@ -241,6 +288,56 @@
         - local_node_red_dir_stat is defined
         - local_node_red_dir_stat.stat.exists
 
+    - name: Check catalog backup data on control machine
+      ansible.builtin.stat:
+        path: "{{ local_catalog_dir }}"
+      delegate_to: localhost
+      become: false
+      register: local_catalog_dir_stat
+      when:
+        - backup_manifest.services.catalog | default(false)
+        - "'compose-node-red.yml' in edge_stack_compose_files"
+        - "'data/catalog' in edge_stack_data_dirs"
+
+    - name: Restore catalog data directory
+      ansible.posix.synchronize:
+        mode: push
+        src: "{{ local_catalog_dir }}/"
+        dest: "{{ remote_catalog_dir }}/"
+        archive: true
+        delete: true
+      when:
+        - backup_manifest.services.catalog | default(false)
+        - "'compose-node-red.yml' in edge_stack_compose_files"
+        - "'data/catalog' in edge_stack_data_dirs"
+        - local_catalog_dir_stat is defined
+        - local_catalog_dir_stat.stat.exists
+
+    - name: Check SQLite backup data on control machine
+      ansible.builtin.stat:
+        path: "{{ local_sqlite_dir }}"
+      delegate_to: localhost
+      become: false
+      register: local_sqlite_dir_stat
+      when:
+        - backup_manifest.services.sqlite | default(false)
+        - "'compose-node-red.yml' in edge_stack_compose_files"
+        - "'data/sqlite' in edge_stack_data_dirs"
+
+    - name: Restore SQLite data directory
+      ansible.posix.synchronize:
+        mode: push
+        src: "{{ local_sqlite_dir }}/"
+        dest: "{{ remote_sqlite_dir }}/"
+        archive: true
+        delete: true
+      when:
+        - backup_manifest.services.sqlite | default(false)
+        - "'compose-node-red.yml' in edge_stack_compose_files"
+        - "'data/sqlite' in edge_stack_data_dirs"
+        - local_sqlite_dir_stat is defined
+        - local_sqlite_dir_stat.stat.exists
+
     - name: Check Grafana backup data on control machine
       ansible.builtin.stat:
         path: "{{ local_grafana_dir }}"
@@ -374,6 +471,34 @@
         - "'compose-node-red.yml' in edge_stack_compose_files"
         - local_node_red_dir_stat is defined
         - local_node_red_dir_stat.stat.exists
+
+    - name: Set catalog data ownership
+      ansible.builtin.file:
+        path: "{{ remote_catalog_dir }}"
+        state: directory
+        owner: "{{ edge_stack_uid }}"
+        group: "{{ edge_stack_gid }}"
+        recurse: true
+      when:
+        - backup_manifest.services.catalog | default(false)
+        - "'compose-node-red.yml' in edge_stack_compose_files"
+        - "'data/catalog' in edge_stack_data_dirs"
+        - local_catalog_dir_stat is defined
+        - local_catalog_dir_stat.stat.exists
+
+    - name: Set SQLite data ownership
+      ansible.builtin.file:
+        path: "{{ remote_sqlite_dir }}"
+        state: directory
+        owner: "{{ edge_stack_uid }}"
+        group: "{{ edge_stack_gid }}"
+        recurse: true
+      when:
+        - backup_manifest.services.sqlite | default(false)
+        - "'compose-node-red.yml' in edge_stack_compose_files"
+        - "'data/sqlite' in edge_stack_data_dirs"
+        - local_sqlite_dir_stat is defined
+        - local_sqlite_dir_stat.stat.exists
 
     - name: Set Grafana data ownership
       ansible.builtin.file:

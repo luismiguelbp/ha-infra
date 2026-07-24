@@ -21,7 +21,15 @@ Files:
 
 ### Edge stack profiles (template inventory)
 
-Each host declares which Compose services it runs via `edge_stack_compose_files` and matching `edge_stack_data_dirs` in `host_vars/`. The `edge_stack` role copies only those files, creates the data dirs, opens the right firewall ports, and sets `COMPOSE_FILE` on each Pi from the host profile.
+Each host declares which Compose services it runs via `edge_stack_compose_files` and matching `edge_stack_data_dirs` in `host_vars/`. The `edge_stack` role copies only those Compose files, creates the data dirs, and sets `COMPOSE_FILE` on each Pi from the host profile. UFW rules are configured separately by the **`firewall` role** during bootstrap (`./bin/infra-bootstrap` or `./bin/infra-configure-firewall`); `./bin/infra-deploy-edge-stack` does not re-apply firewall rules.
+
+| Profile | `edge_stack_compose_files` | `edge_stack_data_dirs` | `edge_stack_data_files` | `firewall_edge_ports` (typical) |
+|---------|---------------------------|------------------------|-------------------------|--------------------------------|
+| Autonomous site | `compose.yml`, `compose-node-red.yml`, `compose-mosquitto.yml` | node-red, mosquitto, **`data/catalog`**, **`data/sqlite`** | *(inherit role defaults)* | 1880, 1883 |
+| Home history tier | `compose.yml`, `compose-postgresql.yml`, `compose-grafana.yml` | postgresql, grafana | `[]` | 3000, 5432 |
+| Full lab | all compose fragments | all data dirs | *(inherit role defaults)* | 9443, 1880, 1883, 5432, 3000 |
+
+Host_vars `role: edge` means **fleet edge host**, not an Ansible role or stack profile name.
 
 | Host | Profile | Compose services |
 |------|---------|------------------|
@@ -29,13 +37,13 @@ Each host declares which Compose services it runs via `edge_stack_compose_files`
 | edge-node-2 | Autonomous site | Node-RED, Mosquitto, SQLite mount |
 | edge-node-3 | Home history tier | PostgreSQL, Grafana |
 
-**Autonomous site** hosts run Node-RED + Mosquitto with a mounted SQLite automation database (`data/sqlite/automation.db`). Each site is independent — no PostgreSQL or Grafana required.
+**Autonomous site** hosts run Node-RED + Mosquitto with deployed `catalog.json` and a mounted SQLite automation database (`data/sqlite/automation.db`). Each site is independent — no PostgreSQL or Grafana required.
 
 **Home history tier** hosts run PostgreSQL + Grafana for long-term telemetry/events and cross-site dashboards. Import site catalogs into this PostgreSQL instance when central history is enabled (see ha-apps `ha-db-portal`).
 
 Production inventory in `HA_INFRA_CONFIG` should mirror the same pattern (autonomous site hosts and a home history tier host) while keeping real hostnames and DNS details out of this repository.
 
-**`edge_stack_data_files`** — the role default copies starter files from `docker/data/` to the host when missing (`mosquitto.conf`, `passwords_file`, `settings.js`, `automation.db`). Ansible never overwrites files that already exist on the host.
+**`edge_stack_data_files`** — the role default copies starter files from `docker/data/` to the host when missing (`mosquitto.conf`, `passwords_file`, `settings.js`, `automation.db`, `catalog.json`). Ansible never overwrites files that already exist on the host. Deploy catalog updates with `./bin/infra-deploy-catalog` (overwrites `catalog.json` on the host).
 
 | Host | `edge_stack_data_files` | Behaviour |
 |------|-------------------------|-----------|
@@ -177,7 +185,30 @@ For a consistent Grafana mirror (brief downtime on database hosts), stop Grafana
 ./bin/infra-backup-edge-stack -e edge_stack_backup_stop_grafana=true
 ```
 
+Autonomous-site hosts mirror `data/sqlite/` (including `automation.db`) into `HA_INFRA_BACKUP/<host>/data/sqlite/`. By default Node-RED is stopped briefly for a consistent SQLite copy (`edge_stack_backup_stop_node_red: true`). Override only for best-effort live copy:
+
+```bash
+./bin/infra-backup-edge-stack --limit edge-node-2 -e edge_stack_backup_stop_node_red=false
+```
+
+To browse a mirrored `automation.db` on your control machine, open it with
+[ha-apps `ha-db-portal --sqlite-file`](https://github.com/luismiguelbp/ha-apps/blob/main/docs/database/portal.md)
+(point at `HA_INFRA_BACKUP/<host>/data/sqlite/automation.db`). The portal is
+localhost-only and edits affect the mirror unless you restore it.
+
 Stale `dumps/postgresql.sql` files are removed when PostgreSQL is in the host profile but the container is not running or the dump fails.
+
+## Deploy site catalog
+
+Push an updated `catalog.json` to one autonomous site host and restart Node-RED:
+
+```bash
+./bin/infra-deploy-catalog --catalog-src /absolute/path/to/catalog.json --limit edge-node-2
+```
+
+From ha-apps, prefer `./bin/ha-db-catalog-deploy --config ha-site-a --limit edge-node-2` (requires `HA_INFRA_ROOT` in ha-apps `.env`).
+
+The playbook copies the file to `data/catalog/catalog.json` and runs `docker compose restart node-red`. Node-RED upserts catalog tables into SQLite on startup; telemetry, events, and snapshots are untouched. See [ha-apps catalog deploy](https://github.com/luismiguelbp/ha-apps/blob/main/docs/database/catalog-deploy.md).
 
 ## Restore edge stack data
 
@@ -188,7 +219,7 @@ Manual disaster recovery only. Bootstrap the target host first, then restore fro
 ./bin/infra-restore-edge-stack --limit edge-node-2 -e edge_stack_restore_source=edge-node-1
 ```
 
-The script refuses to run without `--limit` naming exactly one inventory host. By default it restores `data/` directories and imports `dumps/postgresql.sql`; it does not copy `.env` unless requested.
+The script refuses to run without `--limit` naming exactly one inventory host. By default it restores `data/` directories (including `data/sqlite/` when the backup manifest includes SQLite), imports `dumps/postgresql.sql`, and fixes ownership on restored paths; it does not copy `.env` unless requested. Older backup manifests without `services.sqlite` skip SQLite restore with a warning.
 
 Optional flags:
 

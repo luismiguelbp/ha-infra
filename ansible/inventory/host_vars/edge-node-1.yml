@@ -19,6 +19,7 @@ edge_stack_data_dirs:
   - data/mosquitto/config
   - data/mosquitto/data
   - data/mosquitto/log
+  - data/catalog
   - data/sqlite
   - data/postgresql/data
   - data/grafana/data

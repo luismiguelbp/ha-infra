@@ -2,7 +2,7 @@
 
 This repository contains infrastructure-as-code templates for a small Linux fleet. It is safe to edit templates here, but production inventory, secrets, and tuned configs live outside this repository.
 
-**Storage model:** autonomous sites run Node-RED + Mosquitto + mounted SQLite (`data/sqlite/automation.db`). The home site may run PostgreSQL + Grafana as a central history tier. SQLite is a file mount, not a Compose service. PostgreSQL and Grafana are not required on every host.
+**Storage model:** autonomous sites run Node-RED + Mosquitto + deployed `catalog.json` + mounted SQLite (`data/sqlite/automation.db`). The home site may run PostgreSQL + Grafana as a central history tier. SQLite is a file mount, not a Compose service. PostgreSQL and Grafana are not required on every host.
 
 Use this file as the shared guide for AI coding agents. Portable Agent Skills live in `.agents/skills/`; Cursor-specific behavior belongs in `.cursor/rules/` only when needed.
 
@@ -83,6 +83,7 @@ pytest
 | Configure Samba public share | `./bin/infra-configure-samba` |
 | Docker and system status | `./bin/infra-docker-status` |
 | Backup edge stack data | `./bin/infra-backup-edge-stack` |
+| Deploy site catalog | `./bin/infra-deploy-catalog` |
 | Restore backup mirror to one host | `./bin/infra-restore-edge-stack` |
 | Reboot fleet | `./bin/infra-reboot` |
 
@@ -91,7 +92,7 @@ All scripts accept Ansible extras such as `--limit <host>`, `--check`, and `-e k
 ## Operational Guardrails
 
 - Prefer `--limit edge-node-1` or another single host for first production runs or risky changes.
-- Autonomous site hosts need Node-RED, Mosquitto, and `data/sqlite/` — not PostgreSQL or Grafana.
+- Autonomous site hosts need Node-RED, Mosquitto, `data/catalog/`, and `data/sqlite/` — not PostgreSQL or Grafana.
 - Home history tier hosts need PostgreSQL and Grafana only — not Mosquitto or Node-RED.
 - SQLite (`automation.db`) is mounted into Node-RED; it is not a Compose service.
 - Run `./bin/infra-list-hosts` before fleet operations so the target set is clear.
@@ -107,6 +108,7 @@ Standard Agent Skills are in `.agents/skills/`:
 
 - `infra-fleet`: general ha-infra fleet operations
 - `infra-deploy`: full bootstrap workflow
+- `infra-deploy-catalog`: deploy `catalog.json` to one site host (`infra-deploy-catalog`)
 - `infra-status`: fleet health checks
 - `infra-backup`: backup mirror workflow
 - `infra-restore`: restore mirror workflow

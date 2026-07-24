@@ -8,6 +8,8 @@ services:
       - "1880:1880"
     volumes:
       - ${DOCKER_PATH}/data/node-red/data:/data:rw
+      # Deployed site catalog (host: data/catalog/catalog.json → container: /data/catalog/catalog.json)
+      - ${DOCKER_PATH}/data/catalog:/data/catalog:ro
       # Automation SQLite DB (host: data/sqlite/automation.db → container: /data/sqlite/automation.db)
       - ${DOCKER_PATH}/data/sqlite:/data/sqlite:rw
     environment:

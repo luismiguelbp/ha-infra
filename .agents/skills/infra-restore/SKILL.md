@@ -45,4 +45,4 @@ Examples in this repo use template names (`edge-node-1`, `edge-node-2`, `edge-no
 
 ## Output
 
-Summarize restored runtime data under `/opt/docker/data/` on the target and optional imports from `dumps/` per host profile. Do not print secret file contents.
+Summarize restored runtime data under `/opt/docker/data/` on the target (including `data/sqlite/` when the backup manifest includes SQLite) and optional imports from `dumps/` per host profile. Do not print secret file contents.

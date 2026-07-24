@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+source "$ROOT/bin/_lib.sh"
+
+catalog_src=""
+filtered_args=()
+next_is_catalog_src=false
+
+for arg in "$@"; do
+  if [[ "$next_is_catalog_src" == true ]]; then
+    catalog_src="$arg"
+    next_is_catalog_src=false
+    continue
+  fi
+
+  case "$arg" in
+    --catalog-src)
+      next_is_catalog_src=true
+      ;;
+    --catalog-src=*)
+      catalog_src="${arg#--catalog-src=}"
+      ;;
+    *)
+      filtered_args+=("$arg")
+      ;;
+  esac
+done
+
+if [[ -z "$catalog_src" ]]; then
+  echo "Pass --catalog-src /absolute/path/to/catalog.json" >&2
+  exit 1
+fi
+
+if [[ ! -f "$catalog_src" ]]; then
+  echo "Catalog file not found: $catalog_src" >&2
+  exit 1
+fi
+
+catalog_src="$(cd "$(dirname "$catalog_src")" && pwd)/$(basename "$catalog_src")"
+
+limit_host="$(require_ansible_single_host_limit "${filtered_args[@]}")"
+
+exec "$ROOT/bin/ansible-playbook" \
+  -e "catalog_src=$catalog_src" \
+  playbooks/deploy-catalog.yml \
+  --limit "$limit_host" \
+  "${filtered_args[@]}"

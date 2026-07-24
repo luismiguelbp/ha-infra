@@ -31,4 +31,6 @@ Examples in this repo use template names (`edge-node-1`, `edge-node-2`, `edge-no
 
 ## Output
 
-Summarize each host mirror at `HA_INFRA_BACKUP/<host>/`, including `manifest.json`, mirrored `data/` folders, and service dumps under `dumps/` when included in the host profile. Do not print `.env` contents.
+Summarize each host mirror at `HA_INFRA_BACKUP/<host>/`, including `manifest.json`, mirrored `data/` folders (`data/sqlite/` on autonomous-site hosts), and service dumps under `dumps/` when included in the host profile. Do not print `.env` contents.
+
+Node-RED is stopped briefly by default during backup (`edge_stack_backup_stop_node_red: true`) so `automation.db` is consistent. Document brief downtime when reporting backup results.

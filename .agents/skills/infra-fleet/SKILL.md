@@ -46,6 +46,7 @@ Set `HA_INFRA_CONFIG` in gitignored `.env`. Every `bin/ansible-*` and `bin/infra
 | Configure Samba public share | `./bin/infra-configure-samba` |
 | Docker and system status | `./bin/infra-docker-status` |
 | Backup edge stack data | `./bin/infra-backup-edge-stack` |
+| Deploy site catalog | `./bin/infra-deploy-catalog` (see `infra-deploy-catalog` skill) |
 | Restore backup mirror to one host | `./bin/infra-restore-edge-stack` |
 | Reboot fleet | `./bin/infra-reboot` |
 | Connectivity check | `./bin/infra-ping` |
@@ -90,7 +91,7 @@ Set `HA_INFRA_BACKUP` in gitignored `.env`, then run:
 ./bin/infra-backup-edge-stack --limit edge-node-1
 ```
 
-Each run mirrors runtime files into `HA_INFRA_BACKUP/<host>/` with no timestamp subfolders.
+Each run mirrors runtime files into `HA_INFRA_BACKUP/<host>/` with no timestamp subfolders. Autonomous-site mirrors include `data/sqlite/`; Node-RED stops briefly by default during backup for a consistent `automation.db`.
 
 ## Restore backup mirrors
 

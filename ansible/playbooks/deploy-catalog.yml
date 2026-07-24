@@ -1,0 +1,85 @@
+---
+- name: Deploy site catalog.json and restart Node-RED
+  hosts: linux_hosts
+  gather_facts: false
+  vars:
+    catalog_src: ""
+    remote_catalog_dir: "{{ edge_stack_path }}/data/catalog"
+    remote_catalog_file: "{{ remote_catalog_dir }}/catalog.json"
+  pre_tasks:
+    - name: Load edge stack role defaults
+      ansible.builtin.include_vars:
+        file: ../roles/edge_stack/defaults/main.yml
+        name: edge_stack_role_defaults
+
+    - name: Apply edge stack path default when inventory omits it
+      ansible.builtin.set_fact:
+        edge_stack_path: "{{ edge_stack_role_defaults.edge_stack_path }}"
+      when: edge_stack_path is not defined
+
+    - name: Apply edge stack compose defaults when inventory omits them
+      ansible.builtin.set_fact:
+        edge_stack_compose_files: "{{ edge_stack_role_defaults.edge_stack_compose_files }}"
+      when: edge_stack_compose_files is not defined
+
+    - name: Apply edge stack data directory defaults when inventory omits them
+      ansible.builtin.set_fact:
+        edge_stack_data_dirs: "{{ edge_stack_role_defaults.edge_stack_data_dirs }}"
+      when: edge_stack_data_dirs is not defined
+
+    - name: Require catalog source path
+      ansible.builtin.assert:
+        that:
+          - catalog_src | length > 0
+        fail_msg: "Pass -e catalog_src=/absolute/path/to/catalog.json"
+
+    - name: Check catalog source on control machine
+      ansible.builtin.stat:
+        path: "{{ catalog_src }}"
+      delegate_to: localhost
+      become: false
+      register: catalog_src_stat
+
+    - name: Fail when catalog source is missing
+      ansible.builtin.assert:
+        that:
+          - catalog_src_stat.stat.exists
+          - catalog_src_stat.stat.isreg
+        fail_msg: "catalog_src must point to an existing catalog.json file."
+
+    - name: Require Node-RED on target host
+      ansible.builtin.assert:
+        that:
+          - "'compose-node-red.yml' in edge_stack_compose_files"
+          - "'data/catalog' in edge_stack_data_dirs"
+        fail_msg: "Target host profile must include Node-RED and data/catalog."
+  tasks:
+    - name: Ensure catalog directory exists on host
+      ansible.builtin.file:
+        path: "{{ remote_catalog_dir }}"
+        state: directory
+        mode: "0755"
+      become: true
+      become_user: "{{ ansible_user }}"
+
+    - name: Deploy catalog.json to host
+      ansible.builtin.copy:
+        src: "{{ catalog_src }}"
+        dest: "{{ remote_catalog_file }}"
+        mode: "0644"
+      become: true
+      become_user: "{{ ansible_user }}"
+
+    - name: Check edge stack environment file
+      ansible.builtin.stat:
+        path: "{{ edge_stack_path }}/.env"
+      register: edge_stack_env_file
+
+    - name: Restart Node-RED to run catalog upsert flow
+      ansible.builtin.command: docker compose restart node-red
+      args:
+        chdir: "{{ edge_stack_path }}"
+      changed_when: true
+      become: true
+      become_user: "{{ ansible_user }}"
+      when: edge_stack_env_file.stat.exists

@@ -5,6 +5,9 @@
   vars:
     # Set -e edge_stack_backup_stop_grafana=true for a consistent Grafana mirror (brief downtime).
     edge_stack_backup_stop_grafana: false
+    # Stop Node-RED before mirroring Node-RED data and SQLite (brief downtime; consistent automation.db).
+    # Set false only for best-effort live copy; backup may be inconsistent.
+    edge_stack_backup_stop_node_red: true
     host_backup_root: "{{ ha_infra_backup }}/{{ inventory_hostname }}"
     host_backup_data_root: "{{ host_backup_root }}/data"
     host_backup_dumps_root: "{{ host_backup_root }}/dumps"
@@ -13,10 +16,14 @@
     remote_portainer_dir: "{{ edge_stack_path }}/data/portainer"
     remote_mosquitto_dir: "{{ edge_stack_path }}/data/mosquitto"
     remote_node_red_dir: "{{ edge_stack_path }}/data/node-red"
+    remote_catalog_dir: "{{ edge_stack_path }}/data/catalog"
+    remote_sqlite_dir: "{{ edge_stack_path }}/data/sqlite"
     remote_grafana_dir: "{{ edge_stack_path }}/data/grafana"
     local_portainer_dir: "{{ host_backup_data_root }}/portainer"
     local_mosquitto_dir: "{{ host_backup_data_root }}/mosquitto"
     local_node_red_dir: "{{ host_backup_data_root }}/node-red"
+    local_catalog_dir: "{{ host_backup_data_root }}/catalog"
+    local_sqlite_dir: "{{ host_backup_data_root }}/sqlite"
     local_grafana_dir: "{{ host_backup_data_root }}/grafana"
     local_postgresql_dump: "{{ host_backup_dumps_root }}/postgresql.sql"
   pre_tasks:
@@ -34,6 +41,11 @@
       ansible.builtin.set_fact:
         edge_stack_compose_files: "{{ edge_stack_role_defaults.edge_stack_compose_files }}"
       when: edge_stack_compose_files is not defined
+
+    - name: Apply edge stack data directory defaults when inventory omits them
+      ansible.builtin.set_fact:
+        edge_stack_data_dirs: "{{ edge_stack_role_defaults.edge_stack_data_dirs }}"
+      when: edge_stack_data_dirs is not defined
   tasks:
     - name: Ensure host backup directory exists
       ansible.builtin.file:
@@ -142,22 +154,98 @@
       become: false
       when: "'compose-mosquitto.yml' not in edge_stack_compose_files"
 
-    - name: Check Node-RED data directory on host
-      ansible.builtin.stat:
-        path: "{{ remote_node_red_dir }}"
-      register: remote_node_red_dir_stat
-      when: "'compose-node-red.yml' in edge_stack_compose_files"
-
-    - name: Mirror Node-RED data directory
-      ansible.posix.synchronize:
-        mode: pull
-        src: "{{ remote_node_red_dir }}/"
-        dest: "{{ local_node_red_dir }}/"
-        archive: true
-        delete: true
+    - name: Check Node-RED container state for backup
+      ansible.builtin.command: docker compose ps --services --filter status=running
+      args:
+        chdir: "{{ edge_stack_path }}"
+      register: docker_running_services_nodered_backup
+      changed_when: false
+      failed_when: false
+      become: true
+      become_user: "{{ ansible_user }}"
       when:
         - "'compose-node-red.yml' in edge_stack_compose_files"
-        - remote_node_red_dir_stat.stat.exists
+        - edge_stack_env_file.stat.exists
+
+    - name: Backup Node-RED and SQLite data with optional stop
+      when: "'compose-node-red.yml' in edge_stack_compose_files"
+      block:
+        - name: Check Node-RED data directory on host
+          ansible.builtin.stat:
+            path: "{{ remote_node_red_dir }}"
+          register: remote_node_red_dir_stat
+
+        - name: Check SQLite data directory on host
+          ansible.builtin.stat:
+            path: "{{ remote_sqlite_dir }}"
+          register: remote_sqlite_dir_stat
+          when: "'data/sqlite' in edge_stack_data_dirs"
+
+        - name: Stop Node-RED for consistent backup
+          ansible.builtin.command: docker compose stop node-red
+          args:
+            chdir: "{{ edge_stack_path }}"
+          changed_when: false
+          become: true
+          become_user: "{{ ansible_user }}"
+          when:
+            - edge_stack_backup_stop_node_red | bool
+            - edge_stack_env_file.stat.exists
+            - docker_running_services_nodered_backup is defined
+            - "'node-red' in docker_running_services_nodered_backup.stdout_lines"
+
+        - name: Mirror Node-RED data directory
+          ansible.posix.synchronize:
+            mode: pull
+            src: "{{ remote_node_red_dir }}/"
+            dest: "{{ local_node_red_dir }}/"
+            archive: true
+            delete: true
+          when: remote_node_red_dir_stat.stat.exists
+
+        - name: Check catalog data directory on host
+          ansible.builtin.stat:
+            path: "{{ remote_catalog_dir }}"
+          register: remote_catalog_dir_stat
+          when: "'data/catalog' in edge_stack_data_dirs"
+
+        - name: Mirror catalog data directory
+          ansible.posix.synchronize:
+            mode: pull
+            src: "{{ remote_catalog_dir }}/"
+            dest: "{{ local_catalog_dir }}/"
+            archive: true
+            delete: true
+          when:
+            - "'data/catalog' in edge_stack_data_dirs"
+            - remote_catalog_dir_stat is defined
+            - remote_catalog_dir_stat.stat.exists
+
+        - name: Mirror SQLite data directory
+          ansible.posix.synchronize:
+            mode: pull
+            src: "{{ remote_sqlite_dir }}/"
+            dest: "{{ local_sqlite_dir }}/"
+            archive: true
+            delete: true
+          when:
+            - "'data/sqlite' in edge_stack_data_dirs"
+            - remote_sqlite_dir_stat is defined
+            - remote_sqlite_dir_stat.stat.exists
+
+      always:
+        - name: Start Node-RED after backup
+          ansible.builtin.command: docker compose start node-red
+          args:
+            chdir: "{{ edge_stack_path }}"
+          changed_when: false
+          become: true
+          become_user: "{{ ansible_user }}"
+          when:
+            - edge_stack_backup_stop_node_red | bool
+            - edge_stack_env_file.stat.exists
+            - docker_running_services_nodered_backup is defined
+            - "'node-red' in docker_running_services_nodered_backup.stdout_lines"
 
     - name: Remove local Node-RED mirror when service not present
       ansible.builtin.file:
@@ -166,6 +254,26 @@
       delegate_to: localhost
       become: false
       when: "'compose-node-red.yml' not in edge_stack_compose_files"
+
+    - name: Remove local catalog mirror when service not present
+      ansible.builtin.file:
+        path: "{{ local_catalog_dir }}"
+        state: absent
+      delegate_to: localhost
+      become: false
+      when: >-
+        ('compose-node-red.yml' not in edge_stack_compose_files)
+        or ('data/catalog' not in edge_stack_data_dirs)
+
+    - name: Remove local SQLite mirror when service not present
+      ansible.builtin.file:
+        path: "{{ local_sqlite_dir }}"
+        state: absent
+      delegate_to: localhost
+      become: false
+      when: >-
+        ('compose-node-red.yml' not in edge_stack_compose_files)
+        or ('data/sqlite' not in edge_stack_data_dirs)
 
     - name: Check Grafana data directory on host
       ansible.builtin.stat:
@@ -324,7 +432,9 @@
               "node_red": {{ ('compose-node-red.yml' in edge_stack_compose_files) | to_json }},
               "mosquitto": {{ ('compose-mosquitto.yml' in edge_stack_compose_files) | to_json }},
               "grafana": {{ ('compose-grafana.yml' in edge_stack_compose_files) | to_json }},
-              "postgresql": {{ ('compose-postgresql.yml' in edge_stack_compose_files) | to_json }}
+              "postgresql": {{ ('compose-postgresql.yml' in edge_stack_compose_files) | to_json }},
+              "sqlite": {{ (('compose-node-red.yml' in edge_stack_compose_files) and ('data/sqlite' in edge_stack_data_dirs)) | to_json }},
+              "catalog": {{ (('compose-node-red.yml' in edge_stack_compose_files) and ('data/catalog' in edge_stack_data_dirs)) | to_json }}
             }
           }
       delegate_to: localhost

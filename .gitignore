@@ -32,3 +32,5 @@ docker/data/grafana/provisioning/*
 !docker/data/grafana/provisioning/.gitkeep
 docker/data/sqlite/*
 !docker/data/sqlite/automation.db
+docker/data/catalog/*
+!docker/data/catalog/catalog.json

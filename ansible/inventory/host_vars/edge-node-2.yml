@@ -15,10 +15,11 @@ edge_stack_data_dirs:
   - data/mosquitto/config
   - data/mosquitto/data
   - data/mosquitto/log
+  - data/catalog
   - data/sqlite
 
 # edge_stack_data_files: omitted — inherits role defaults (mosquitto.conf, passwords_file,
-# settings.js, automation.db copied from docker/data/ only when missing on the host).
+# settings.js, automation.db, catalog.json copied from docker/data/ only when missing).
 
 # Optional: move Docker data to a USB SSD
 # edge_stack_path: /mnt/ssd/docker

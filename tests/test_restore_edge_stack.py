@@ -23,9 +23,13 @@ REQUIRED_TASK_NAMES = {
     "Load backup manifest",
     "Warn when backup includes services not on target host",
     "Warn when target host expects services missing from backup",
+    "Warn when backup includes SQLite but target host has no SQLite data dir",
+    "Warn when target host expects SQLite but backup manifest does not",
     "Restore Mosquitto data directory",
     "Restore Node-RED data directory",
+    "Restore SQLite data directory",
     "Restore Grafana data directory",
+    "Set SQLite data ownership",
     "Import PostgreSQL dump on host",
     "Start edge stack services after restore",
 }
@@ -128,10 +132,12 @@ def test_restore_manifest_fixture_is_valid_json() -> None:
         "services": {
             "mosquitto": True,
             "node_red": True,
+            "sqlite": True,
             "grafana": False,
             "postgresql": False,
         },
     }
     parsed = json.loads(json.dumps(manifest))
     assert parsed["services"]["mosquitto"] is True
+    assert parsed["services"]["sqlite"] is True
     assert parsed["services"]["postgresql"] is False

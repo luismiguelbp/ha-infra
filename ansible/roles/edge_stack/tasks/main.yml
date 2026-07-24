@@ -126,6 +126,15 @@
     recurse: true
   when: "'data/sqlite' in edge_stack_data_dirs"
 
+- name: Set catalog data ownership
+  ansible.builtin.file:
+    path: "{{ edge_stack_path }}/data/catalog"
+    state: directory
+    owner: "{{ edge_stack_uid }}"
+    group: "{{ edge_stack_gid }}"
+    recurse: true
+  when: "'data/catalog' in edge_stack_data_dirs"
+
 - name: Set Grafana data ownership
   ansible.builtin.file:
     path: "{{ edge_stack_path }}/data/grafana"

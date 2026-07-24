@@ -1,6 +1,6 @@
 # Edge stack (Docker Compose)
 
-Autonomous sites run Node-RED, Mosquitto, and a mounted SQLite automation database.
+Autonomous sites run Node-RED, Mosquitto, a deployed `catalog.json`, and a mounted SQLite automation database.
 The home site may additionally run PostgreSQL and Grafana as a central history tier.
 Deployed by the Ansible `edge_stack` role to `/opt/docker` on each host.
 
@@ -8,7 +8,7 @@ Deployed by the Ansible `edge_stack` role to `/opt/docker` on each host.
 
 | Profile | Services | Template host | Purpose |
 |---------|----------|---------------|---------|
-| **Autonomous site** | Node-RED, Mosquitto, SQLite mount | edge-node-2 | Local automation per site |
+| **Autonomous site** | Node-RED, Mosquitto, catalog.json, SQLite mount | edge-node-2 | Local automation per site |
 | **Home history tier** | PostgreSQL, Grafana | edge-node-3 | Central telemetry/events and dashboards |
 | **Full lab** | All services | edge-node-1 | Development / integration testing |
 
@@ -17,6 +17,11 @@ SQLite is **not** a Compose service. It is a file bind-mounted into Node-RED:
 - **Host path:** `${DOCKER_PATH}/data/sqlite/automation.db` (default `/opt/docker/data/sqlite/automation.db`)
 - **Container path:** `/data/sqlite/automation.db`
 
+Site inventory is deployed as `catalog.json`:
+
+- **Host path:** `${DOCKER_PATH}/data/catalog/catalog.json`
+- **Container path:** `/data/catalog/catalog.json` (read-only mount)
+
 ## Services
 
 | Service | Port | Profile | Purpose |
@@ -24,6 +29,7 @@ SQLite is **not** a Compose service. It is a file bind-mounted into Node-RED:
 | Node-RED | 1880 | Autonomous site | Flow editor and runtime |
 | Mosquitto | 1883, 9001 | Autonomous site | MQTT broker (9001 = WebSockets) |
 | SQLite (`automation.db`) | — | Autonomous site | Per-site automation database (file mount) |
+| `catalog.json` | — | Autonomous site | Deployed site inventory (file under `data/catalog/`) |
 | PostgreSQL | 5432 | Home history tier | Central history database |
 | Grafana | 3000 | Home history tier | Dashboards |
 | Portainer | 9443 | Optional (lab) | Docker management UI |
@@ -44,11 +50,31 @@ docker/
 └── data/
     ├── portainer/            # Portainer state
     ├── node-red/data/        # settings.js starter
+    ├── catalog/              # catalog.json starter (deployed/updated by infra-deploy-catalog)
     ├── mosquitto/config/     # mosquitto.conf, passwords_file (manual)
     └── sqlite/               # automation.db starter (mounted into Node-RED at /data/sqlite)
 ```
 
-Node-RED mounts `${DOCKER_PATH}/data/sqlite` at `/data/sqlite`. Path inside the container: `/data/sqlite/automation.db`. This is the per-site automation database (catalog, snapshots, short-retention telemetry/events). See [ha-apps database docs](https://github.com/luismiguelbp/ha-apps/blob/main/docs/database/automation.md).
+Node-RED mounts `${DOCKER_PATH}/data/sqlite` at `/data/sqlite` and `${DOCKER_PATH}/data/catalog` at `/data/catalog` (read-only). Path inside the container: `/data/sqlite/automation.db` and `/data/catalog/catalog.json`. Deploy catalog updates with `./bin/infra-deploy-catalog` (see [ha-apps catalog deploy](https://github.com/luismiguelbp/ha-apps/blob/main/docs/database/catalog-deploy.md)). See [ha-apps database docs](https://github.com/luismiguelbp/ha-apps/blob/main/docs/database/automation.md).
+
+## Profile configuration
+
+Each host profile is defined in inventory `host_vars/` — there is no separate profile variable:
+
+| Variable | Role |
+|----------|------|
+| `edge_stack_compose_files` | Which Compose service fragments run on this host |
+| `edge_stack_data_dirs` | Runtime directories created under `/opt/docker/data/` |
+| `edge_stack_data_files` | Starter files copied when missing (`[]` on history-tier hosts) |
+| `firewall_edge_ports` | UFW allow list (configured by the `firewall` role at bootstrap) |
+
+Template hosts: `edge-node-2` (autonomous site), `edge-node-3` (home history tier), `edge-node-1` (full lab).
+
+## Backup and restore
+
+`./bin/infra-backup-edge-stack` mirrors runtime data to `HA_INFRA_BACKUP/<host>/data/`. Autonomous-site hosts include `data/catalog/` and `data/sqlite/`. Node-RED is stopped briefly by default during backup for a consistent SQLite file.
+
+`./bin/infra-restore-edge-stack --limit <host>` pushes the mirror back and sets ownership on restored directories. See [docs/ansible.md](../docs/ansible.md#backup-edge-stack-data).
 
 ## Credentials
 
