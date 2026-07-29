@@ -15,5 +15,8 @@
     - role: samba
       tags: [samba]
       when: samba_enabled | bool
+    - role: ftp
+      tags: [ftp]
+      when: ftp_enabled | bool
     - role: edge_stack
       tags: [edge_stack]

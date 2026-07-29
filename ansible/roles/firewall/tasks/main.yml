@@ -46,6 +46,17 @@
     - firewall_enabled | bool
     - firewall_samba_enabled | bool
 
+- name: Allow FTP ports from trusted networks
+  community.general.ufw:
+    rule: allow
+    port: "{{ item.1 | string }}"
+    proto: tcp
+    src: "{{ item.0 }}"
+  loop: "{{ firewall_trusted_cidrs | product(firewall_ftp_ports) | list }}"
+  when:
+    - firewall_enabled | bool
+    - firewall_ftp_enabled | bool
+
 - name: Enable UFW
   community.general.ufw:
     state: enabled

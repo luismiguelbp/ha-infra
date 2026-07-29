@@ -17,3 +17,8 @@ firewall_edge_ports:
 firewall_samba_enabled: "{{ samba_enabled | default(false) }}"
 firewall_samba_ports:
   - 445
+
+firewall_ftp_enabled: "{{ ftp_enabled | default(false) }}"
+firewall_ftp_ports:
+  - 21
+  - "40000:40009"

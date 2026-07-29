@@ -1,0 +1,30 @@
+# Managed by Ansible (ha-infra ftp role). Trusted LAN/VPN only.
+listen=YES
+listen_ipv6=NO
+
+anonymous_enable=NO
+local_enable=YES
+write_enable=YES
+
+chroot_local_user=YES
+allow_writeable_chroot=YES
+
+pasv_min_port={{ ftp_pasv_min_port }}
+pasv_max_port={{ ftp_pasv_max_port }}
+
+local_umask=022
+xferlog_enable=YES
+{% if ftp_tls_enabled | bool %}
+
+# Explicit FTPS (AUTH TLS on control connection; TLS on data channels).
+ssl_enable=YES
+allow_anon_ssl=NO
+force_local_logins_ssl={{ 'YES' if ftp_tls_force | bool else 'NO' }}
+force_local_data_ssl={{ 'YES' if ftp_tls_force | bool else 'NO' }}
+ssl_tlsv1=YES
+ssl_sslv2=NO
+ssl_sslv3=NO
+require_ssl_reuse=NO
+rsa_cert_file={{ ftp_tls_cert_file }}
+rsa_private_key_file={{ ftp_tls_key_file }}
+{% endif %}

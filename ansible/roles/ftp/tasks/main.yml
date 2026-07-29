@@ -1,0 +1,166 @@
+---
+- name: Require FTP users when FTP is enabled
+  ansible.builtin.assert:
+    that:
+      - ftp_users | length > 0
+    fail_msg: >-
+      ftp_enabled is true but ftp_users is empty.
+      Set ftp_users in HA_INFRA_CONFIG inventory (use ansible-vault for passwords).
+  when: ftp_enabled | bool
+
+- name: Require cert and key sources together for TLS
+  ansible.builtin.assert:
+    that:
+      - (ftp_tls_cert_src | length > 0) == (ftp_tls_key_src | length > 0)
+    fail_msg: >-
+      Set both ftp_tls_cert_src and ftp_tls_key_src, or leave both empty
+      to generate a self-signed certificate.
+  when:
+    - ftp_enabled | bool
+    - ftp_tls_enabled | bool
+
+- name: Install vsftpd package
+  ansible.builtin.apt:
+    name: "{{ ftp_package_name }}"
+    state: present
+  when: ftp_enabled | bool
+
+- name: Ensure FTP share root exists
+  ansible.builtin.file:
+    path: "{{ ftp_share_root }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "{{ ftp_share_root_mode }}"
+  when: ftp_enabled | bool
+
+- name: Ensure FTP share directory exists
+  ansible.builtin.file:
+    path: "{{ ftp_share_path }}"
+    state: directory
+    owner: "{{ ftp_share_force_user }}"
+    group: "{{ ftp_share_force_group }}"
+    mode: "{{ ftp_share_directory_mode }}"
+  when: ftp_enabled | bool
+
+# vsftpd PAM (pam_shells) rejects login shells not listed in /etc/shells.
+- name: Ensure FTP user shell is listed in /etc/shells
+  ansible.builtin.lineinfile:
+    path: /etc/shells
+    line: "{{ ftp_user_shell }}"
+    create: false
+  when: ftp_enabled | bool
+
+- name: Create FTP local users
+  ansible.builtin.user:
+    name: "{{ item.name }}"
+    password: "{{ item.password | password_hash('sha512') }}"
+    home: "{{ ftp_share_path }}"
+    shell: "{{ ftp_user_shell }}"
+    create_home: false
+    system: true
+  loop: "{{ ftp_users }}"
+  no_log: true
+  when: ftp_enabled | bool
+
+- name: Ensure TLS private key directory exists
+  ansible.builtin.file:
+    path: "{{ ftp_tls_key_file | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when:
+    - ftp_enabled | bool
+    - ftp_tls_enabled | bool
+
+- name: Ensure TLS certificate directory exists
+  ansible.builtin.file:
+    path: "{{ ftp_tls_cert_file | dirname }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0755"
+  when:
+    - ftp_enabled | bool
+    - ftp_tls_enabled | bool
+
+- name: Deploy provided TLS private key
+  ansible.builtin.copy:
+    src: "{{ ftp_tls_key_src }}"
+    dest: "{{ ftp_tls_key_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  notify: Restart vsftpd
+  when:
+    - ftp_enabled | bool
+    - ftp_tls_enabled | bool
+    - ftp_tls_key_src | length > 0
+
+- name: Deploy provided TLS certificate
+  ansible.builtin.copy:
+    src: "{{ ftp_tls_cert_src }}"
+    dest: "{{ ftp_tls_cert_file }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart vsftpd
+  when:
+    - ftp_enabled | bool
+    - ftp_tls_enabled | bool
+    - ftp_tls_cert_src | length > 0
+
+- name: Generate self-signed TLS certificate when none provided
+  ansible.builtin.command:
+    argv:
+      - openssl
+      - req
+      - -x509
+      - -nodes
+      - -newkey
+      - rsa:2048
+      - -keyout
+      - "{{ ftp_tls_key_file }}"
+      - -out
+      - "{{ ftp_tls_cert_file }}"
+      - -days
+      - "{{ ftp_tls_cert_days | string }}"
+      - -subj
+      - "/CN={{ ftp_tls_cert_cn }}"
+    creates: "{{ ftp_tls_cert_file }}"
+  notify: Restart vsftpd
+  when:
+    - ftp_enabled | bool
+    - ftp_tls_enabled | bool
+    - ftp_tls_cert_src | length == 0
+    - ftp_tls_key_src | length == 0
+
+- name: Ensure generated TLS private key permissions
+  ansible.builtin.file:
+    path: "{{ ftp_tls_key_file }}"
+    owner: root
+    group: root
+    mode: "0600"
+  when:
+    - ftp_enabled | bool
+    - ftp_tls_enabled | bool
+
+- name: Deploy vsftpd configuration
+  ansible.builtin.template:
+    src: vsftpd.conf.j2
+    dest: "{{ ftp_config_path }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Restart vsftpd
+  when: ftp_enabled | bool
+
+- name: Ensure vsftpd service is enabled and running
+  ansible.builtin.service:
+    name: "{{ ftp_service_name }}"
+    state: started
+    enabled: true
+  when:
+    - ftp_enabled | bool
+    - not ansible_check_mode

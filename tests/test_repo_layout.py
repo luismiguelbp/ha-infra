@@ -85,11 +85,51 @@ def test_infra_configure_samba_script_and_role_files_exist() -> None:
     assert handlers_file.is_file()
 
 
+def test_infra_configure_ftp_script_and_role_files_exist() -> None:
+    """FTP wrapper, role files, and skills are present for public share FTP setup."""
+    configure_script = PROJECT_ROOT / "bin" / "infra-configure-ftp"
+    test_script = PROJECT_ROOT / "bin" / "infra-ftp-test"
+    defaults_file = PROJECT_ROOT / "ansible" / "roles" / "ftp" / "defaults" / "main.yml"
+    tasks_file = PROJECT_ROOT / "ansible" / "roles" / "ftp" / "tasks" / "main.yml"
+    template_file = PROJECT_ROOT / "ansible" / "roles" / "ftp" / "templates" / "vsftpd.conf.j2"
+    handlers_file = PROJECT_ROOT / "ansible" / "roles" / "ftp" / "handlers" / "main.yml"
+    helper_script = PROJECT_ROOT / "scripts" / "infra_ftp_test.py"
+    skill_ftp = PROJECT_ROOT / ".agents" / "skills" / "infra-ftp" / "SKILL.md"
+    skill_ftp_test = PROJECT_ROOT / ".agents" / "skills" / "infra-ftp-test" / "SKILL.md"
+
+    assert configure_script.is_file()
+    assert configure_script.stat().st_mode & 0o111
+    assert test_script.is_file()
+    assert test_script.stat().st_mode & 0o111
+    assert defaults_file.is_file()
+    assert tasks_file.is_file()
+    assert template_file.is_file()
+    assert handlers_file.is_file()
+    assert helper_script.is_file()
+    assert skill_ftp.is_file()
+    assert skill_ftp_test.is_file()
+
+
 def test_env_example_includes_config_and_backup_vars() -> None:
     """.env.example documents external config and backup paths."""
     env_example = (PROJECT_ROOT / ".env.example").read_text()
     assert "HA_INFRA_CONFIG=" in env_example
     assert "HA_INFRA_BACKUP=" in env_example
+    assert "HA_INFRA_FTP_HOST=" in env_example
+
+
+def test_infra_ftp_test_help_smoke() -> None:
+    """FTP test helper exposes argparse help without a live broker."""
+    import subprocess
+
+    result = subprocess.run(
+        ["python3", str(PROJECT_ROOT / "scripts" / "infra_ftp_test.py"), "--help"],
+        check=False,
+        capture_output=True,
+        text=True,
+    )
+    assert result.returncode == 0
+    assert "infra-ftp-test" in result.stdout
 
 
 def test_edge_stack_utility_playbooks_preserve_inventory_precedence() -> None:

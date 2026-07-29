@@ -1,0 +1,32 @@
+---
+ftp_enabled: false
+
+ftp_package_name: vsftpd
+ftp_service_name: vsftpd
+ftp_config_path: /etc/vsftpd.conf
+
+ftp_share_path: "{{ samba_share_path | default('/srv/samba/public') }}"
+ftp_share_root: "{{ samba_share_root | default('/srv/samba') }}"
+ftp_share_root_mode: "{{ samba_share_root_mode | default('0755') }}"
+ftp_share_directory_mode: "{{ samba_share_directory_mode | default('0777') }}"
+ftp_share_force_user: "{{ samba_share_force_user | default('nobody') }}"
+ftp_share_force_group: "{{ samba_share_force_group | default('nogroup') }}"
+
+ftp_users: []
+
+ftp_pasv_min_port: 40000
+ftp_pasv_max_port: 40009
+ftp_user_shell: /usr/sbin/nologin
+
+# Explicit FTPS (AUTH TLS on port 21). Opt-in; plain FTP remains the default.
+ftp_tls_enabled: false
+# When TLS is enabled, require TLS for login and data (recommended).
+ftp_tls_force: true
+ftp_tls_cert_file: /etc/ssl/certs/vsftpd.crt
+ftp_tls_key_file: /etc/ssl/private/vsftpd.key
+# Optional control-machine paths to copy existing cert/key (leave empty for self-signed).
+ftp_tls_cert_src: ""
+ftp_tls_key_src: ""
+# CN for generated self-signed cert (use dns_name from host_vars when set).
+ftp_tls_cert_cn: "{{ dns_name | default(inventory_hostname) }}"
+ftp_tls_cert_days: 3650

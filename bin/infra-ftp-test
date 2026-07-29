@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+# shellcheck source=bin/_lib.sh
+source "$ROOT/bin/_lib.sh"
+load_project_env
+exec python3 "$ROOT/scripts/infra_ftp_test.py" "$@"

@@ -10,5 +10,10 @@ samba_enabled: false
 samba_share_name: public
 samba_share_path: /srv/samba/public
 
+# Enable authenticated FTP on the Samba public share (opt-in per host/site).
+ftp_enabled: false
+# Explicit FTPS (AUTH TLS on port 21); opt-in. Self-signed cert generated when enabled.
+ftp_tls_enabled: false
+
 # Set to true to reboot after apt upgrade when /var/run/reboot-required exists.
 reboot_after_upgrade: false

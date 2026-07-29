@@ -1,0 +1,6 @@
+---
+- name: Restart vsftpd
+  ansible.builtin.service:
+    name: "{{ ftp_service_name }}"
+    state: restarted
+  when: not ansible_check_mode

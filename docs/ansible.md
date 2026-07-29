@@ -130,6 +130,8 @@ Run from the repo root. All scripts use `ansible/ansible.cfg` and the fleet inve
 | `bin/infra-restore-edge-stack` | Push backup mirror to one host (`--limit` required) |
 | `bin/infra-configure-firewall` | Configure UFW (`--tags firewall`) |
 | `bin/infra-configure-samba` | Configure Samba public share and SMB firewall (`--tags firewall,samba`) |
+| `bin/infra-configure-ftp` | Configure FTP (vsftpd) and FTP firewall (`--tags firewall,ftp`) |
+| `bin/infra-ftp-test` | Test FTP connectivity and read/write (OS env `HA_INFRA_FTP_*`) |
 | `bin/infra-reboot` | Reboot all Pis (`common` role, `--tags reboot`) |
 
 Task helpers accept the same extra flags as Ansible (`--check`, `--limit`, `-e`, etc.).
@@ -303,6 +305,37 @@ Dry run:
 ./bin/infra-configure-samba --limit edge-node-1 --check
 ```
 
+**Configure FTP share only:**
+
+```bash
+./bin/infra-configure-ftp
+```
+
+One host:
+
+```bash
+./bin/infra-configure-ftp --limit edge-node-1
+```
+
+Dry run:
+
+```bash
+./bin/infra-configure-ftp --limit edge-node-1 --check
+```
+
+**Test FTP from the control machine:**
+
+Set credentials in `.env` or the shell (never commit real passwords):
+
+```bash
+export HA_INFRA_FTP_HOST=edge-node-1.example.lan
+export HA_INFRA_FTP_USER=ftpuser
+export HA_INFRA_FTP_PASSWORD=your-password
+./bin/infra-ftp-test status
+./bin/infra-ftp-test write
+./bin/infra-ftp-test read --remote .ha-infra-ftp-probe-<timestamp>.txt
+```
+
 **Install packages:**
 
 ```bash
@@ -332,6 +365,7 @@ Package roles:
 | `packages` | Meta-role; includes both (for reuse outside `site.yml`) | `ansible/roles/packages/tasks/main.yml` |
 | `firewall` | UFW rules for SSH and edge stack ports | `ansible/roles/firewall/defaults/main.yml` |
 | `samba` | Anonymous public SMB share at `/srv/samba/public` | `ansible/roles/samba/defaults/main.yml` |
+| `ftp` | Authenticated FTP/FTPS (vsftpd) on the Samba public share | `ansible/roles/ftp/defaults/main.yml` |
 | `edge_stack` | Deploy Compose edge stack per host profile | `ansible/roles/edge_stack/defaults/main.yml` |
 
 Compose files live in `docker/` at the repo root. The role copies them to `/opt/docker` on each Pi.
@@ -385,6 +419,8 @@ Ansible deploys `env.example`. When `docker/.env` exists on the control machine 
 | `firewall_edge_ports` | `1880`, `1883` | Edge stack ports |
 | `firewall_samba_enabled` | `samba_enabled` | Toggle SMB firewall rules |
 | `firewall_samba_ports` | `445` | Samba SMB ports |
+| `firewall_ftp_enabled` | `ftp_enabled` | Toggle FTP firewall rules |
+| `firewall_ftp_ports` | `21`, `40000:40009` | FTP control and passive ports |
 
 Restrict further per site with `host_vars` if needed (for example a single `/24`).
 
@@ -409,6 +445,61 @@ mount -t smbfs //guest@edge-node-1.example.lan/public /tmp/samba-public
 
 # Linux
 sudo mount -t cifs //edge-node-1.example.lan/public /mnt/samba-public -o guest,uid=$(id -u),gid=$(id -g)
+```
+
+### FTP public share
+
+The `ftp` role configures authenticated FTP (vsftpd) on the same directory as the Samba public share. FTP is **opt-in** per host or site (`ftp_enabled: false` by default). Set users and passwords in `HA_INFRA_CONFIG` inventory (prefer ansible-vault):
+
+```yaml
+ftp_enabled: true
+ftp_users:
+  - name: ftpuser
+    password: "set-in-vault-or-host-vars"
+```
+
+Optional explicit FTPS (AUTH TLS on port 21). When enabled, the role generates a self-signed certificate unless you supply `ftp_tls_cert_src` / `ftp_tls_key_src`. With `ftp_tls_force: true` (default), plain FTP logins are rejected:
+
+```yaml
+ftp_enabled: true
+ftp_tls_enabled: true
+ftp_users:
+  - name: ftpuser
+    password: "set-in-vault-or-host-vars"
+```
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `ftp_enabled` | `false` | Enable FTP role |
+| `ftp_share_path` | `/srv/samba/public` | Shared directory (same as Samba) |
+| `ftp_users` | `[]` | Local users with `{ name, password }` |
+| `ftp_pasv_min_port` / `ftp_pasv_max_port` | `40000` / `40009` | Passive data port range |
+| `ftp_user_shell` | `/usr/sbin/nologin` | Shell for FTP-only users (added to `/etc/shells` for vsftpd PAM) |
+| `ftp_tls_enabled` | `false` | Enable explicit FTPS (AUTH TLS) |
+| `ftp_tls_force` | `true` | Require TLS for login and data when TLS is enabled |
+| `ftp_tls_cert_file` / `ftp_tls_key_file` | `/etc/ssl/certs/vsftpd.crt` / `/etc/ssl/private/vsftpd.key` | Cert paths on the host |
+| `ftp_tls_cert_src` / `ftp_tls_key_src` | empty | Optional control-machine paths to copy; empty = generate self-signed |
+| `ftp_tls_cert_cn` | `dns_name` or inventory hostname | CN for generated self-signed cert |
+
+Prefer `ftp_tls_enabled: true` so credentials are not sent in cleartext. Still keep `firewall_trusted_cidrs` restricted; do not expose FTP/FTPS to the public internet.
+
+Client test env vars (control machine `.env` or shell):
+
+| Variable | Required | Purpose |
+|----------|---------|---------|
+| `HA_INFRA_FTP_HOST` | yes | FTP hostname |
+| `HA_INFRA_FTP_USER` | yes | FTP username |
+| `HA_INFRA_FTP_PASSWORD` | yes | FTP password |
+| `HA_INFRA_FTP_PORT` | no | Default `21` |
+| `HA_INFRA_FTP_TLS` | no | Set `1` for explicit FTPS |
+| `HA_INFRA_FTP_TLS_INSECURE` | no | Set `1` to accept self-signed certs |
+
+Example FTPS test:
+
+```bash
+export HA_INFRA_FTP_TLS=1
+export HA_INFRA_FTP_TLS_INSECURE=1
+./bin/infra-ftp-test status
 ```
 
 ### Mosquitto migration

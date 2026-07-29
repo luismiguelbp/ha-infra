@@ -44,6 +44,8 @@ Set `HA_INFRA_CONFIG` in gitignored `.env`. Every `bin/ansible-*` and `bin/infra
 | Full fleet provisioning | `./bin/infra-bootstrap` |
 | Edge stack only | `./bin/infra-deploy-edge-stack` |
 | Configure Samba public share | `./bin/infra-configure-samba` |
+| Configure FTP public share | `./bin/infra-configure-ftp` |
+| Test FTP connectivity | `./bin/infra-ftp-test` |
 | Docker and system status | `./bin/infra-docker-status` |
 | Backup edge stack data | `./bin/infra-backup-edge-stack` |
 | Deploy site catalog | `./bin/infra-deploy-catalog` (see `infra-deploy-catalog` skill) |

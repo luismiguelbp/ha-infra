@@ -81,6 +81,8 @@ pytest
 | Full fleet provisioning | `./bin/infra-bootstrap` |
 | Edge stack only | `./bin/infra-deploy-edge-stack` |
 | Configure Samba public share | `./bin/infra-configure-samba` |
+| Configure FTP public share | `./bin/infra-configure-ftp` |
+| Test FTP connectivity | `./bin/infra-ftp-test` |
 | Docker and system status | `./bin/infra-docker-status` |
 | Backup edge stack data | `./bin/infra-backup-edge-stack` |
 | Deploy site catalog | `./bin/infra-deploy-catalog` |
@@ -109,6 +111,8 @@ Standard Agent Skills are in `.agents/skills/`:
 - `infra-fleet`: general ha-infra fleet operations
 - `infra-deploy`: full bootstrap workflow
 - `infra-deploy-catalog`: deploy `catalog.json` to one site host (`infra-deploy-catalog`)
+- `infra-ftp`: configure FTP/FTPS (vsftpd) on fleet hosts
+- `infra-ftp-test`: FTP/FTPS connectivity and read/write checks (`infra-ftp-test`)
 - `infra-status`: fleet health checks
 - `infra-backup`: backup mirror workflow
 - `infra-restore`: restore mirror workflow
