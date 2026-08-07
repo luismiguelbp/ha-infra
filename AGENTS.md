@@ -6,6 +6,12 @@ This repository contains infrastructure-as-code templates for a small Linux flee
 
 Use this file as the shared guide for AI coding agents. Portable Agent Skills live in `.agents/skills/`; Cursor-specific behavior belongs in `.cursor/rules/` only when needed.
 
+## Engineering Principles
+
+- **KISS:** prefer the simplest clear solution that works.
+- **LEAN:** minimize waste, scope, and unnecessary process.
+- **YAGNI:** do not add functionality or abstractions until they are needed.
+
 ## Templates Only
 
 This repository is **IaC templates**, not production config. Ansible and Docker files here are **not deployed as-is**.

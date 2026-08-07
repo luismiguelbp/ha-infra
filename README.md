@@ -2,6 +2,10 @@
 
 Infrastructure-as-code for a small Raspberry Pi fleet. Ansible and Docker Compose on the devices; wrapper scripts on your Mac.
 
+## Engineering principles
+
+Keep changes simple, focused, and necessary by following **KISS**, **LEAN**, and **YAGNI**.
+
 ## Contents
 
 - Getting started (first-time fleet setup): below
