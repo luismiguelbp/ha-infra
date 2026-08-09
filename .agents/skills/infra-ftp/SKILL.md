@@ -42,7 +42,7 @@ Leave `ftp_tls_cert_src` / `ftp_tls_key_src` empty to generate a self-signed cer
 ./bin/infra-configure-ftp --limit edge-node-1 --check
 ```
 
-4. Verify with the `infra-ftp-test` skill (`HA_INFRA_FTP_TLS=1`, and `HA_INFRA_FTP_TLS_INSECURE=1` for self-signed).
+4. Verify with the `infra-ftp-test` skill (`HA_INFRA_FTP_TLS_INSECURE=1` for self-signed).
 
 ## Rules
 

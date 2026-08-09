@@ -131,7 +131,7 @@ Run from the repo root. All scripts use `ansible/ansible.cfg` and the fleet inve
 | `bin/infra-configure-firewall` | Configure UFW (`--tags firewall`) |
 | `bin/infra-configure-samba` | Configure Samba public share and SMB firewall (`--tags firewall,samba`) |
 | `bin/infra-configure-ftp` | Configure FTP (vsftpd) and FTP firewall (`--tags firewall,ftp`) |
-| `bin/infra-ftp-test` | Test FTP connectivity and read/write (OS env `HA_INFRA_FTP_*`) |
+| `bin/infra-ftp-test` | Test FTP connectivity and read/write (`--limit` + OS env `HA_INFRA_FTP_USER` / `HA_INFRA_FTP_PASS`) |
 | `bin/infra-reboot` | Reboot all Pis (`common` role, `--tags reboot`) |
 
 Task helpers accept the same extra flags as Ansible (`--check`, `--limit`, `-e`, etc.).
@@ -325,15 +325,15 @@ Dry run:
 
 **Test FTP from the control machine:**
 
-Set credentials in `.env` or the shell (never commit real passwords):
+Hostname comes from inventory `dns_name` (fallback `ansible_host`) via `--limit`. Set `HA_INFRA_FTP_USER` / `HA_INFRA_FTP_PASS` in the OS environment (never commit real passwords):
 
 ```bash
-export HA_INFRA_FTP_HOST=edge-node-1.example.lan
 export HA_INFRA_FTP_USER=ftpuser
-export HA_INFRA_FTP_PASSWORD=your-password
-./bin/infra-ftp-test status
-./bin/infra-ftp-test write
-./bin/infra-ftp-test read --remote .ha-infra-ftp-probe-<timestamp>.txt
+export HA_INFRA_FTP_PASS=your-password
+export HA_INFRA_FTP_TLS_INSECURE=1   # self-signed cert from the ftp role
+./bin/infra-ftp-test --limit edge-node-1 status
+./bin/infra-ftp-test --limit edge-node-1 write
+./bin/infra-ftp-test --limit edge-node-1 read --remote .ha-infra-ftp-probe-<timestamp>.txt
 ```
 
 **Install packages:**
@@ -483,23 +483,23 @@ ftp_users:
 
 Prefer `ftp_tls_enabled: true` so credentials are not sent in cleartext. Still keep `firewall_trusted_cidrs` restricted; do not expose FTP/FTPS to the public internet.
 
-Client test env vars (control machine `.env` or shell):
+Client test:
 
-| Variable | Required | Purpose |
-|----------|---------|---------|
-| `HA_INFRA_FTP_HOST` | yes | FTP hostname |
-| `HA_INFRA_FTP_USER` | yes | FTP username |
-| `HA_INFRA_FTP_PASSWORD` | yes | FTP password |
-| `HA_INFRA_FTP_PORT` | no | Default `21` |
-| `HA_INFRA_FTP_TLS` | no | Set `1` for explicit FTPS |
-| `HA_INFRA_FTP_TLS_INSECURE` | no | Set `1` to accept self-signed certs |
+| Variable / flag | Required | Where | Purpose |
+|-----------------|---------|-------|---------|
+| `--limit <host>` | yes | CLI | Inventory hostname; resolves `dns_name` (fallback `ansible_host`) |
+| `HA_INFRA_FTP_USER` | yes | OS env | FTP username |
+| `HA_INFRA_FTP_PASS` | yes | OS env | FTP password |
+| `HA_INFRA_FTP_PORT` | no | `.env` / OS | Default `21` |
+| `HA_INFRA_FTP_TLS_INSECURE` | no | `.env` / OS | Accept self-signed certs |
+
+TLS mode comes from inventory `ftp_tls_enabled` (no env override).
 
 Example FTPS test:
 
 ```bash
-export HA_INFRA_FTP_TLS=1
 export HA_INFRA_FTP_TLS_INSECURE=1
-./bin/infra-ftp-test status
+./bin/infra-ftp-test --limit edge-node-1 status
 ```
 
 ### Mosquitto migration

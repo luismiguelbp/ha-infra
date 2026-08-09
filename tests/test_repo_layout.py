@@ -115,7 +115,8 @@ def test_env_example_includes_config_and_backup_vars() -> None:
     env_example = (PROJECT_ROOT / ".env.example").read_text()
     assert "HA_INFRA_CONFIG=" in env_example
     assert "HA_INFRA_BACKUP=" in env_example
-    assert "HA_INFRA_FTP_HOST=" in env_example
+    assert "HA_INFRA_FTP_USER" in env_example
+    assert "HA_INFRA_FTP_HOST" not in env_example
 
 
 def test_infra_ftp_test_help_smoke() -> None:
@@ -130,6 +131,8 @@ def test_infra_ftp_test_help_smoke() -> None:
     )
     assert result.returncode == 0
     assert "infra-ftp-test" in result.stdout
+    assert "--limit" in result.stdout
+    assert "dns_name" in result.stdout
 
 
 def test_edge_stack_utility_playbooks_preserve_inventory_precedence() -> None:

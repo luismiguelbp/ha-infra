@@ -59,7 +59,7 @@ pytest
 ./bin/infra-deploy-edge-stack
 ./bin/infra-configure-samba
 ./bin/infra-configure-ftp
-./bin/infra-ftp-test status
+./bin/infra-ftp-test --limit edge-node-1 status
 ./bin/infra-docker-status
 ./bin/infra-backup-edge-stack
 ```

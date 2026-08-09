@@ -9,14 +9,19 @@ import os
 import ssl
 import sys
 import time
+from dataclasses import dataclass
 from ftplib import FTP, FTP_TLS, error_perm, error_proto, error_reply, error_temp
+from pathlib import Path
 
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 
-ENV_HOST = "HA_INFRA_FTP_HOST"
+from infra_inventory import InventoryError, InventoryHost, resolve_inventory_host
+
 ENV_USER = "HA_INFRA_FTP_USER"
-ENV_PASSWORD = "HA_INFRA_FTP_PASSWORD"
+ENV_PASSWORD = "HA_INFRA_FTP_PASS"
 ENV_PORT = "HA_INFRA_FTP_PORT"
-ENV_TLS = "HA_INFRA_FTP_TLS"
 ENV_TLS_INSECURE = "HA_INFRA_FTP_TLS_INSECURE"
 DEFAULT_PORT = 21
 PROBE_PREFIX = ".ha-infra-ftp-probe-"
@@ -26,8 +31,18 @@ class FtpTestConfigError(Exception):
     """Missing or invalid FTP test configuration."""
 
 
-class FtpTestError(Exception):
-    """FTP operation failed."""
+@dataclass(frozen=True)
+class FtpTestConfig:
+    """Resolved FTP client settings (never log password)."""
+
+    host: str
+    user: str
+    password: str
+    port: int
+    tls: bool
+    tls_insecure: bool
+    inventory_host: str
+    host_source: str
 
 
 def _required_env(name: str) -> str:
@@ -55,38 +70,65 @@ def _ftp_port() -> int:
     return port
 
 
-def load_ftp_config() -> tuple[str, str, str, int, bool, bool]:
-    host = _required_env(ENV_HOST)
-    user = _required_env(ENV_USER)
-    password = _required_env(ENV_PASSWORD)
-    port = _ftp_port()
-    tls = _env_flag(ENV_TLS)
-    tls_insecure = _env_flag(ENV_TLS_INSECURE)
-    return host, user, password, port, tls, tls_insecure
+def _host_source(inv: InventoryHost) -> str:
+    if inv.dns_name:
+        return "dns_name"
+    if inv.ansible_host:
+        return "ansible_host"
+    return "inventory_hostname"
 
 
-def connect_ftp() -> FTP:
-    host, user, password, port, tls, tls_insecure = load_ftp_config()
-    if tls:
+def load_ftp_config(limit: str, inventory_root: Path | None = None) -> FtpTestConfig:
+    try:
+        inv = resolve_inventory_host(limit, inventory_root=inventory_root)
+    except InventoryError as exc:
+        raise FtpTestConfigError(str(exc)) from exc
+
+    if inv.ftp_enabled is False:
+        raise FtpTestConfigError(
+            f"ftp_enabled is false for inventory host {inv.name!r}; "
+            "enable FTP in host_vars or choose another --limit host"
+        )
+
+    return FtpTestConfig(
+        host=inv.connect_host,
+        user=_required_env(ENV_USER),
+        password=_required_env(ENV_PASSWORD),
+        port=_ftp_port(),
+        tls=bool(inv.ftp_tls_enabled),
+        tls_insecure=_env_flag(ENV_TLS_INSECURE),
+        inventory_host=inv.name,
+        host_source=_host_source(inv),
+    )
+
+
+def connect_ftp(config: FtpTestConfig) -> FTP:
+    if config.tls:
         context = ssl.create_default_context()
-        if tls_insecure:
+        if config.tls_insecure:
             context.check_hostname = False
             context.verify_mode = ssl.CERT_NONE
         ftp: FTP = FTP_TLS(context=context)
-        ftp.connect(host=host, port=port, timeout=30)
-        ftp.login(user=user, passwd=password)
+        ftp.connect(host=config.host, port=config.port, timeout=30)
+        ftp.login(user=config.user, passwd=config.password)
         ftp.prot_p()
         return ftp
 
     ftp = FTP()
-    ftp.connect(host=host, port=port, timeout=30)
-    ftp.login(user=user, passwd=password)
+    ftp.connect(host=config.host, port=config.port, timeout=30)
+    ftp.login(user=config.user, passwd=config.password)
     return ftp
 
 
-def cmd_status(_args: argparse.Namespace) -> int:
+def _load_config(args: argparse.Namespace) -> FtpTestConfig:
+    inventory_root = Path(args.inventory) if getattr(args, "inventory", None) else None
+    return load_ftp_config(args.limit, inventory_root=inventory_root)
+
+
+def cmd_status(args: argparse.Namespace) -> int:
     try:
-        ftp = connect_ftp()
+        config = _load_config(args)
+        ftp = connect_ftp(config)
     except FtpTestConfigError as exc:
         print(f"FTP test configuration error: {exc}", file=sys.stderr)
         return 1
@@ -100,14 +142,14 @@ def cmd_status(_args: argparse.Namespace) -> int:
     finally:
         ftp.quit()
 
-    host, user, _, port, tls, tls_insecure = load_ftp_config()
     print("FTP status OK")
-    print(f"  host: {host}")
-    print(f"  port: {port}")
-    print(f"  user: {user}")
-    print(f"  tls: {'yes' if tls else 'no'}")
-    if tls:
-        print(f"  tls_insecure: {'yes' if tls_insecure else 'no'}")
+    print(f"  inventory: {config.inventory_host}")
+    print(f"  host: {config.host} ({config.host_source})")
+    print(f"  port: {config.port}")
+    print(f"  user: {config.user}")
+    print(f"  tls: {'yes' if config.tls else 'no'}")
+    if config.tls:
+        print(f"  tls_insecure: {'yes' if config.tls_insecure else 'no'}")
     print(f"  pwd: {pwd}")
     print(f"  entries: {len(names)}")
     return 0
@@ -122,7 +164,8 @@ def cmd_write(args: argparse.Namespace) -> int:
     payload = args.payload or f"ha-infra ftp probe {time.time()}\n"
 
     try:
-        ftp = connect_ftp()
+        config = _load_config(args)
+        ftp = connect_ftp(config)
     except FtpTestConfigError as exc:
         print(f"FTP test configuration error: {exc}", file=sys.stderr)
         return 1
@@ -140,11 +183,11 @@ def cmd_write(args: argparse.Namespace) -> int:
     finally:
         ftp.quit()
 
-    host, _, _, port, tls, _ = load_ftp_config()
     print("FTP write OK")
-    print(f"  host: {host}")
-    print(f"  port: {port}")
-    print(f"  tls: {'yes' if tls else 'no'}")
+    print(f"  inventory: {config.inventory_host}")
+    print(f"  host: {config.host} ({config.host_source})")
+    print(f"  port: {config.port}")
+    print(f"  tls: {'yes' if config.tls else 'no'}")
     print(f"  remote: {remote_name}")
     print(f"  kept: {'yes' if args.keep else 'no'}")
     return 0
@@ -156,7 +199,8 @@ def cmd_read(args: argparse.Namespace) -> int:
         return 1
 
     try:
-        ftp = connect_ftp()
+        config = _load_config(args)
+        ftp = connect_ftp(config)
     except FtpTestConfigError as exc:
         print(f"FTP test configuration error: {exc}", file=sys.stderr)
         return 1
@@ -174,11 +218,11 @@ def cmd_read(args: argparse.Namespace) -> int:
         ftp.quit()
 
     data = buffer.getvalue()
-    host, _, _, port, tls, _ = load_ftp_config()
     print("FTP read OK")
-    print(f"  host: {host}")
-    print(f"  port: {port}")
-    print(f"  tls: {'yes' if tls else 'no'}")
+    print(f"  inventory: {config.inventory_host}")
+    print(f"  host: {config.host} ({config.host_source})")
+    print(f"  port: {config.port}")
+    print(f"  tls: {'yes' if config.tls else 'no'}")
     print(f"  remote: {args.remote}")
     print(f"  bytes: {len(data)}")
     if args.show_content:
@@ -190,10 +234,23 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="infra-ftp-test",
         description=(
-            "Test FTP/FTPS connectivity against a fleet host using "
-            f"{ENV_HOST}, {ENV_USER}, and {ENV_PASSWORD} from the OS environment. "
-            f"Set {ENV_TLS}=1 for explicit FTPS; {ENV_TLS_INSECURE}=1 for self-signed certs."
+            "Test FTP/FTPS against one inventory host. "
+            "Hostname comes from host_vars dns_name (fallback ansible_host). "
+            f"TLS follows inventory ftp_tls_enabled. "
+            f"Credentials: {ENV_USER} / {ENV_PASSWORD} in the OS environment. "
+            f"Self-signed certs: {ENV_TLS_INSECURE}=1."
         ),
+    )
+    parser.add_argument(
+        "--limit",
+        "-l",
+        required=True,
+        metavar="HOST",
+        help="Inventory hostname (exactly one), e.g. edge-node-1.",
+    )
+    parser.add_argument(
+        "--inventory",
+        help=argparse.SUPPRESS,
     )
     subparsers = parser.add_subparsers(dest="command")
     subparsers.required = True
