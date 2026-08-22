@@ -224,6 +224,7 @@
     env_files:
       - "{{ edge_stack_path }}/.env"
     state: present
+    remove_orphans: true
     pull: "{{ 'always' if edge_stack_pull_images | bool else 'missing' }}"
   become: true
   become_user: "{{ ansible_user }}"

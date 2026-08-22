@@ -15,6 +15,7 @@ Hostname comes from inventory `host_vars` `dns_name` (fallback `ansible_host`). 
 - FTP/FTPS login or connectivity failures
 - Verify read/write on the shared public share
 - Troubleshoot after `./bin/infra-configure-ftp`
+- Camera FTP Test / vsftpd.log: use ha-apps `ha-reolink-debug` (this script only tests the control machine)
 
 ## Prerequisites
 
