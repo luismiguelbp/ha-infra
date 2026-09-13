@@ -4,13 +4,21 @@ This repository contains infrastructure-as-code templates for a small Linux flee
 
 **Storage model:** autonomous sites run Node-RED + Mosquitto + deployed `catalog.json` + mounted SQLite (`data/sqlite/automation.db`). The home site may run PostgreSQL + Grafana as a central history tier. SQLite is a file mount, not a Compose service. PostgreSQL and Grafana are not required on every host.
 
-Use this file as the shared guide for AI coding agents. Portable Agent Skills live in `.agents/skills/`; Cursor-specific behavior belongs in `.cursor/rules/` only when needed.
+- Read the [README](README.md) for setup, layout, and documentation.
+- Read relevant documentation ([docs/ansible.md](docs/ansible.md), [docker/README.md](docker/README.md)) before changing infrastructure behavior.
+- Discover skills under [`.agents/skills/`](.agents/skills/) and read the matching `SKILL.md` when the task fits. Do not load unused skills.
+- Portable Agent Skills live in `.agents/skills/`; Cursor-specific behavior belongs in `.cursor/rules/` only when needed.
 
 ## Engineering Principles
 
-- **KISS:** prefer the simplest clear solution that works.
-- **LEAN:** minimize waste, scope, and unnecessary process.
-- **YAGNI:** do not add functionality or abstractions until they are needed.
+- **KISS — Keep It Simple:** choose the simplest solution that meets the requirements.
+- **LEAN:** minimize waste—code, dependencies, steps, and work that add no value.
+- **YAGNI — You Aren’t Gonna Need It:** don’t implement features or abstractions until they’re actually needed.
+- **DRY — Don’t Repeat Yourself:** keep a single source of truth; link instead of copying.
+
+## Conventional Commits
+
+- Commits: `<type>: <short imperative summary>` (`feat`, `fix`, `docs`, `chore`, `refactor`, `test`).
 
 ## Templates Only
 
@@ -54,55 +62,24 @@ When **writing or editing files in this repo**, always use the fictional templat
 - Never read, print, echo, commit, or summarize secrets from `.env`, `passwords_file`, credential hashes, or production config files.
 - Do not commit backup data, mirrored `.env` files, or runtime service data.
 - Keep real host metadata in the external config clone only.
+- Keep secret patterns aligned in `.gitignore` and `.cursorignore`.
 - If a task requires secret values, ask the user to run the sensitive step locally or confirm only non-secret status.
 
-## Setup And Checks
+## Verification
 
-Run commands from the `ha-infra` repo root.
-
-```bash
-python -m venv .venv
-source .venv/bin/activate
-pip install -r requirements.txt
-ansible-galaxy collection install -r ansible/requirements.yml
-```
-
-Useful verification commands:
+Run from the `ha-infra` repo root. Setup and script usage live in the [README](README.md) and [docs/ansible.md](docs/ansible.md); task workflows live in the matching skill.
 
 ```bash
 pytest
 ./bin/infra-list-hosts
 ./bin/infra-ping
-./bin/infra-docker-status
 ```
 
 `pytest` includes a guard that fails if non-fictional `*.lan` hostnames appear in committed template files (only `*.example.lan` is allowed).
 
-## Fleet Scripts
-
-| Goal | Script |
-|------|--------|
-| List inventory hosts | `./bin/infra-list-hosts` |
-| Connectivity check | `./bin/infra-ping` |
-| Full fleet provisioning | `./bin/infra-bootstrap` |
-| Edge stack only | `./bin/infra-deploy-edge-stack` |
-| Configure Samba public share | `./bin/infra-configure-samba` |
-| Configure FTP public share | `./bin/infra-configure-ftp` |
-| Test FTP connectivity | `./bin/infra-ftp-test --limit edge-node-1` |
-| Docker and system status | `./bin/infra-docker-status` |
-| Backup edge stack data | `./bin/infra-backup-edge-stack` |
-| Deploy site catalog | `./bin/infra-deploy-catalog` |
-| Restore backup mirror to one host | `./bin/infra-restore-edge-stack` |
-| Reboot fleet | `./bin/infra-reboot` |
-
-All scripts accept Ansible extras such as `--limit <host>`, `--check`, and `-e key=value`.
-
 ## Operational Guardrails
 
 - Prefer `--limit edge-node-1` or another single host for first production runs or risky changes.
-- Autonomous site hosts need Node-RED, Mosquitto, `data/catalog/`, and `data/sqlite/` — not PostgreSQL or Grafana.
-- Home history tier hosts need PostgreSQL and Grafana only — not Mosquitto or Node-RED.
-- SQLite (`automation.db`) is mounted into Node-RED; it is not a Compose service.
 - Run `./bin/infra-list-hosts` before fleet operations so the target set is clear.
 - Run `./bin/infra-ping` before deploy, backup, restore, or reboot operations.
 - If ping fails, stop and report the failure before running disruptive commands.
@@ -110,25 +87,9 @@ All scripts accept Ansible extras such as `--limit <host>`, `--check`, and `-e k
 - Restores are manual disaster recovery operations and require exactly one target host via `--limit`.
 - Compose-only updates should use `./bin/infra-deploy-edge-stack` instead of full bootstrap.
 
-## Portable Skills
-
-Standard Agent Skills are in `.agents/skills/`:
-
-- `infra-fleet`: general ha-infra fleet operations
-- `infra-deploy`: full bootstrap workflow
-- `infra-deploy-catalog`: deploy `catalog.json` to one site host (`infra-deploy-catalog`)
-- `infra-ftp`: configure FTP/FTPS (vsftpd) on fleet hosts
-- `infra-ftp-test`: FTP/FTPS connectivity and read/write checks (`infra-ftp-test`)
-- `infra-status`: fleet health checks
-- `infra-backup`: backup mirror workflow
-- `infra-restore`: restore mirror workflow
-- `infra-reboot`: reboot workflow
-
-Cursor command-style workflows have moved to `.agents/skills/` with `disable-model-invocation: true` where they should be invoked manually.
-
 ## References
 
-- `README.md`: repository overview and day-to-day setup
+- `README.md`: repository overview, setup, and helper scripts
 - `docs/ansible.md`: inventory, helper scripts, limits, and options
 - `docker/README.md`: edge stack layout and credential handling
 - `ansible/inventory/`: fictional template inventory
